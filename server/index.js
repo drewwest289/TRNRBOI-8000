@@ -76,7 +76,7 @@ const CORS_ORIGINS = process.env.CORS_ORIGINS
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGINS }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 // POST /api/workouts — receive from Apple Shortcuts (single workout)
 // Also accepts a full Health Auto Export bulk export { data: { workouts: [] } }
