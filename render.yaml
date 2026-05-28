@@ -1,0 +1,32 @@
+# Render deployment configuration
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: half-marathon-api
+    env: node
+    plan: free
+    region: oregon
+
+    buildCommand: npm install
+    startCommand: node server/index.js
+
+    # Render sets PORT automatically — do not override it here.
+    # The server reads process.env.PORT and falls back to 3001 for local dev.
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Directory for the pending-workout queue file.
+      # /tmp persists across restarts but is wiped on redeploy — acceptable
+      # for a queue that's meant to be drained within minutes/hours.
+      - key: QUEUE_DIR
+        value: /tmp
+
+      # Comma-separated list of allowed CORS origins.
+      # Set this in the Render dashboard once you know your Cloudflare Pages URL:
+      #   https://your-app.pages.dev,http://localhost:5173
+      - key: CORS_ORIGINS
+        sync: false

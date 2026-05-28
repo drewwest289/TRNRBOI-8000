@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local env overrides — never commit real values
+.env
+.env.local
+.env.*.local
+
+# Server queue (local dev artifact)
+server/pending.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Health export data — personal, never commit
+HealthAutoExport-*.json
+
+# Installers
+*.msi
+
+# Legacy single-file prototype
+index.html.html
+
+# Archive folder
+Archive/
