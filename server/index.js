@@ -76,8 +76,80 @@ function readStravaTokens() {
   }
 }
 
+// Persist tokens to Render environment variables so they survive redeploys.
+// Requires RENDER_API_KEY and RENDER_SERVICE_ID to be set; silently skips
+// if either is missing so local dev and non-Render deployments still work.
+// Render's API does NOT trigger a redeploy when env vars are updated this way.
+async function persistTokensToRender(tokens) {
+  const apiKey    = process.env.RENDER_API_KEY;
+  const serviceId = process.env.RENDER_SERVICE_ID;
+  if (!apiKey || !serviceId) {
+    console.warn('[strava] RENDER_API_KEY / RENDER_SERVICE_ID not set — tokens will not survive redeploys');
+    return;
+  }
+
+  const BASE    = 'https://api.render.com/v1';
+  const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json' };
+
+  // Fetch all existing env vars (paginated, up to 100 per page).
+  const existing = [];
+  let cursor = null;
+  do {
+    const url = new URL(`${BASE}/services/${serviceId}/env-vars`);
+    url.searchParams.set('limit', '100');
+    if (cursor) url.searchParams.set('cursor', cursor);
+    const res = await fetch(url.toString(), { headers });
+    if (!res.ok) throw new Error(`GET env-vars ${res.status}`);
+    const page = await res.json();
+    cursor = null;
+    for (const item of page) {
+      // Render returns [{ envVar: { key, value }, cursor }]
+      const ev = item.envVar ?? item;
+      if (ev?.key) existing.push({ key: ev.key, value: ev.value ?? '' });
+      if (item.cursor) cursor = item.cursor;
+    }
+  } while (cursor);
+
+  // Merge the three token fields into the existing set.
+  const TOKEN_KEYS = new Set(['STRAVA_ACCESS_TOKEN', 'STRAVA_REFRESH_TOKEN', 'STRAVA_TOKEN_EXPIRES_AT']);
+  const merged = [
+    ...existing.filter(v => !TOKEN_KEYS.has(v.key)),
+    { key: 'STRAVA_ACCESS_TOKEN',    value: tokens.access_token },
+    { key: 'STRAVA_REFRESH_TOKEN',   value: tokens.refresh_token },
+    { key: 'STRAVA_TOKEN_EXPIRES_AT', value: String(tokens.expires_at) },
+  ];
+
+  const put = await fetch(`${BASE}/services/${serviceId}/env-vars`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(merged),
+  });
+  if (!put.ok) {
+    const text = await put.text();
+    throw new Error(`PUT env-vars ${put.status}: ${text}`);
+  }
+  console.log('[strava] tokens persisted to Render env vars (survive redeploys)');
+}
+
 function writeStravaTokens(tokens) {
   fs.writeFileSync(STRAVA_TOKEN_FILE, JSON.stringify(tokens, null, 2));
+  // Fire-and-forget — failure here is non-fatal; tokens still work this session.
+  persistTokensToRender(tokens).catch(err =>
+    console.error('[strava] Render env persist failed:', err.message)
+  );
+}
+
+// On startup: if the token file was wiped (redeploy), rebuild it from env vars
+// that were written by a previous session's persistTokensToRender call.
+function restoreTokensFromEnv() {
+  if (fs.existsSync(STRAVA_TOKEN_FILE)) return;
+  const access  = process.env.STRAVA_ACCESS_TOKEN;
+  const refresh = process.env.STRAVA_REFRESH_TOKEN;
+  const expires = process.env.STRAVA_TOKEN_EXPIRES_AT;
+  if (!access || !refresh || !expires) return;
+  const tokens = { access_token: access, refresh_token: refresh, expires_at: parseInt(expires, 10) };
+  fs.writeFileSync(STRAVA_TOKEN_FILE, JSON.stringify(tokens, null, 2));
+  console.log('[strava] tokens restored from env vars — expiry:', new Date(tokens.expires_at * 1000).toISOString());
 }
 
 // Exchange or refresh tokens with Strava. Returns the new token set.
@@ -315,6 +387,9 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, queueLength: readQueu
 app.get('/health',     (_req, res) => res.json({ ok: true }));
 
 // ── Start ─────────────────────────────────────────────────────────────────────
+
+// Restore Strava tokens from env vars if /tmp was wiped by a redeploy.
+restoreTokensFromEnv();
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

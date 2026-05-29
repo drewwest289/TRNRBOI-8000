@@ -43,3 +43,25 @@ services:
       #   https://half-marathon-api.onrender.com/auth/strava/callback
       - key: STRAVA_REDIRECT_URI
         sync: false
+
+      # ── Strava token persistence ────────────────────────────────────────────
+      # After OAuth completes, the server writes tokens back to these env vars
+      # via the Render API so they survive redeploys. Without these, you must
+      # re-authorize at /auth/strava after every deploy.
+      #
+      # RENDER_API_KEY:   Render dashboard → Account Settings → API Keys → Create
+      # RENDER_SERVICE_ID: the srv-xxxxx ID shown in your service URL
+      #
+      # STRAVA_ACCESS_TOKEN / STRAVA_REFRESH_TOKEN / STRAVA_TOKEN_EXPIRES_AT
+      # are written automatically after OAuth — do not set them by hand.
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_SERVICE_ID
+        sync: false
+      # The three below are managed automatically by the server — do not set manually.
+      - key: STRAVA_ACCESS_TOKEN
+        sync: false
+      - key: STRAVA_REFRESH_TOKEN
+        sync: false
+      - key: STRAVA_TOKEN_EXPIRES_AT
+        sync: false
