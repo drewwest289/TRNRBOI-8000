@@ -30,3 +30,16 @@ services:
       #   https://your-app.pages.dev,http://localhost:5173
       - key: CORS_ORIGINS
         sync: false
+
+      # ── Strava OAuth ────────────────────────────────────────────────────────
+      # Set these in the Render dashboard — do NOT commit real values here.
+      # Get them from https://www.strava.com/settings/api
+      - key: STRAVA_CLIENT_ID
+        sync: false
+      - key: STRAVA_CLIENT_SECRET
+        sync: false
+      # Must match "Authorization Callback Domain" on Strava's API settings page.
+      # Set to the full callback URL of this service, e.g.:
+      #   https://half-marathon-api.onrender.com/auth/strava/callback
+      - key: STRAVA_REDIRECT_URI
+        sync: false
