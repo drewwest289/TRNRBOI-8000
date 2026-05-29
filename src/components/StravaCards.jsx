@@ -189,7 +189,7 @@ function StreamsChart({ activityId }) {
 
 // ── Activity row ──────────────────────────────────────────────────────────────
 
-function ActivityRow({ activity, checked, onToggle, disabled }) {
+function ActivityRow({ activity, checked, onToggle, onDismiss, disabled }) {
   const [expanded, setExpanded] = useState(false);
   const { name, date, distMi, durMin, hr, type, _status, stravaId } = activity;
 
@@ -200,7 +200,7 @@ function ActivityRow({ activity, checked, onToggle, disabled }) {
   return (
     <div className={`rounded-lg border transition-colors mb-1.5 ${
       isDupe
-        ? 'border-slate-800 opacity-50'
+        ? 'border-slate-800 opacity-60'
         : expanded
         ? 'border-slate-600 bg-slate-800/70'
         : 'border-slate-800 bg-slate-900 hover:bg-slate-800/50'
@@ -236,13 +236,26 @@ function ActivityRow({ activity, checked, onToggle, disabled }) {
             {hr      ? ` · ${hr} bpm`                 : ''}
           </div>
         </div>
-        <button
-          className="flex-shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
-          onClick={() => setExpanded(e => !e)}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
-        >
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Dismiss button — only on "in log" rows */}
+          {isDupe && onDismiss && (
+            <button
+              className="text-slate-600 hover:text-slate-300 transition-colors px-1"
+              onClick={onDismiss}
+              title="Mark as recorded — remove from list"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          )}
+          <button
+            className="text-slate-500 hover:text-slate-300 transition-colors"
+            onClick={() => setExpanded(e => !e)}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
       </div>
 
       {expanded && (
@@ -264,12 +277,14 @@ export function StravaActivitiesCard({ defaultUser }) {
   const [phase,      setPhase]      = useState('loading'); // loading | ready | importing | done | error | disconnected
   const [activities, setActivities] = useState([]);
   const [selected,   setSelected]   = useState(new Set());
+  const [dismissed,  setDismissed]  = useState(new Set()); // stravaIds of "in log" rows the user has hidden
   const [result,     setResult]     = useState(null);
   const [errMsg,     setErrMsg]     = useState('');
 
   const load = useCallback(async () => {
     setPhase('loading');
     setErrMsg('');
+    setDismissed(new Set());
     try {
       const raw        = await fetchStravaActivities(15);
       const normalized = raw.map(normalizeStravaActivity);
@@ -296,8 +311,27 @@ export function StravaActivitiesCard({ defaultUser }) {
   function toggle(i) {
     setSelected(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; });
   }
+
+  // Dismiss hides an "in log" row and removes it from the selection.
+  function dismiss(stravaId, idx) {
+    setDismissed(prev => new Set([...prev, stravaId]));
+    setSelected(prev => { const s = new Set(prev); s.delete(idx); return s; });
+  }
+
+  function selectAll() {
+    setSelected(new Set(
+      activities
+        .map((a, i) => (!dismissed.has(a.stravaId) && a._status !== 'invalid') ? i : -1)
+        .filter(i => i >= 0)
+    ));
+  }
+  function deselectAll() { setSelected(new Set()); }
   function selectNew() {
-    setSelected(new Set(activities.map((a, i) => a._status === 'new' ? i : -1).filter(i => i >= 0)));
+    setSelected(new Set(
+      activities
+        .map((a, i) => (!dismissed.has(a.stravaId) && a._status === 'new') ? i : -1)
+        .filter(i => i >= 0)
+    ));
   }
 
   async function doImport() {
@@ -312,8 +346,9 @@ export function StravaActivitiesCard({ defaultUser }) {
     }
   }
 
-  const selectedCount = selected.size;
-  const newCount = [...selected].filter(i => activities[i]?._status === 'new').length;
+  const visibleActivities = activities.filter(a => !dismissed.has(a.stravaId));
+  const selectedCount     = selected.size;
+  const hasNew            = visibleActivities.some(a => a._status === 'new');
 
   return (
     <div className="card">
@@ -359,29 +394,46 @@ export function StravaActivitiesCard({ defaultUser }) {
 
       {phase === 'ready' && activities.length > 0 && (
         <>
-          <p className="text-xs text-slate-500 mb-3">
-            Click the chevron on any activity to see heart rate and pace streams.
-            Check activities to import them into your training log.
-          </p>
-          <div>
-            {activities.map((a, i) => (
-              <ActivityRow
-                key={a.stravaId ?? i}
-                activity={a}
-                checked={selected.has(i)}
-                onToggle={() => toggle(i)}
-                disabled={phase !== 'ready'}
-              />
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {/* Toolbar: selection controls + import button */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <button className="btn" onClick={doImport} disabled={selectedCount === 0}>
               Import {selectedCount > 0 ? selectedCount : ''}{selectedCount !== 1 ? ' activities' : ' activity'}
             </button>
-            {activities.filter(a => a._status === 'new').length > 1 && (
+            <button className="btn-ghost text-xs" onClick={selectAll}>Select all</button>
+            <button className="btn-ghost text-xs" onClick={deselectAll}>Deselect all</button>
+            {hasNew && (
               <button className="btn-ghost text-xs" onClick={selectNew}>New only</button>
             )}
           </div>
+
+          {/* Activity list — dismissed rows are hidden, indices unchanged for selection */}
+          <div>
+            {activities.map((a, i) => {
+              if (dismissed.has(a.stravaId)) return null;
+              return (
+                <ActivityRow
+                  key={a.stravaId ?? i}
+                  activity={a}
+                  checked={selected.has(i)}
+                  onToggle={() => toggle(i)}
+                  onDismiss={a._status === 'duplicate' ? () => dismiss(a.stravaId, i) : null}
+                  disabled={phase !== 'ready'}
+                />
+              );
+            })}
+          </div>
+
+          {dismissed.size > 0 && (
+            <p className="text-xs text-slate-600 mt-2">
+              {dismissed.size} {dismissed.size === 1 ? 'activity' : 'activities'} hidden ·{' '}
+              <button
+                className="underline hover:text-slate-400 transition-colors"
+                onClick={() => setDismissed(new Set())}
+              >
+                show all
+              </button>
+            </p>
+          )}
         </>
       )}
 
