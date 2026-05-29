@@ -210,7 +210,7 @@ function ActivityRow({ activity, checked, onToggle, disabled }) {
           type="checkbox"
           className="mt-0.5 accent-emerald-500 cursor-pointer flex-shrink-0"
           checked={checked}
-          disabled={disabled || isDupe}
+          disabled={disabled}
           onChange={onToggle}
         />
         <div className="flex-1 min-w-0">
@@ -275,8 +275,9 @@ export function StravaActivitiesCard({ defaultUser }) {
       const normalized = raw.map(normalizeStravaActivity);
       const annotated  = await Promise.all(normalized.map(checkDupe));
       setActivities(annotated);
+      // Pre-select new activities; still allow toggling duplicates manually.
       setSelected(new Set(
-        annotated.map((a, i) => a._status === 'new' ? i : -1).filter(i => i >= 0)
+        annotated.map((a, i) => a._status !== 'invalid' ? i : -1).filter(i => i >= 0)
       ));
       setPhase('ready');
     } catch (e) {
@@ -311,6 +312,7 @@ export function StravaActivitiesCard({ defaultUser }) {
     }
   }
 
+  const selectedCount = selected.size;
   const newCount = [...selected].filter(i => activities[i]?._status === 'new').length;
 
   return (
@@ -373,8 +375,8 @@ export function StravaActivitiesCard({ defaultUser }) {
             ))}
           </div>
           <div className="flex items-center gap-2 mt-3 flex-wrap">
-            <button className="btn" onClick={doImport} disabled={newCount === 0}>
-              Import {newCount > 0 ? newCount : ''}{newCount !== 1 ? ' activities' : ' activity'}
+            <button className="btn" onClick={doImport} disabled={selectedCount === 0}>
+              Import {selectedCount > 0 ? selectedCount : ''}{selectedCount !== 1 ? ' activities' : ' activity'}
             </button>
             {activities.filter(a => a._status === 'new').length > 1 && (
               <button className="btn-ghost text-xs" onClick={selectNew}>New only</button>
