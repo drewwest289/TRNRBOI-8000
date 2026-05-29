@@ -12,6 +12,7 @@ import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { parseHAEJson } from '../../lib/normalize';
 import { TYPE_COLOR, CHART_COLORS } from '../../lib/colors';
+import { StravaStatsCard, StravaActivitiesCard } from '../StravaCards';
 
 // ── Chart data helpers ────────────────────────────────────────────────────────
 
@@ -524,6 +525,8 @@ export default function HistoryTab() {
 
   return (
     <div>
+      <StravaStatsCard />
+      <StravaActivitiesCard defaultUser={defaultUser} />
       <WatchSyncCard  defaultUser={defaultUser} />
       <JsonImportCard defaultUser={defaultUser} />
 
