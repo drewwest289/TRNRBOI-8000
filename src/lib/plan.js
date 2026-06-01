@@ -35,14 +35,29 @@ export function getDayMiles(dayStr) {
   return parseFloat(dayStr.split(' ')[1]) || 0;
 }
 
+/**
+ * Parse a YYYY-MM-DD string using LOCAL date parts (not UTC) so there is no
+ * timezone shift on machines west of UTC.
+ */
+function parseLocalDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d); // local midnight — no DST ambiguity
+}
+
 export function getPlanStart() {
   // Read the stored start date (written by useTrainingPlan / PlanSettings).
   const stored = localStorage.getItem('trnr_startDate');
   if (stored) {
-    const d = new Date(stored + 'T00:00:00');
-    if (!isNaN(d.getTime())) { d.setHours(0, 0, 0, 0); return d; }
+    const d = parseLocalDate(stored);
+    if (!isNaN(d.getTime())) {
+      // The plan week columns run Sun–Sat (index 0–6).
+      // Snap to the Sunday of the week that contains the stored date so
+      // day-column labels always align with real calendar days.
+      d.setDate(d.getDate() - d.getDay());
+      return d;
+    }
   }
-  // Fallback before setup: anchor to the start of the current week.
+  // Fallback before setup: anchor to the start of the current week (Sunday).
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - d.getDay());
@@ -63,7 +78,7 @@ export function getDateForCell(week, dayIdx) {
 export function getRaceDate() {
   const stored = localStorage.getItem('trnr_raceDate');
   if (stored) {
-    const d = new Date(stored + 'T00:00:00');
+    const d = parseLocalDate(stored);
     if (!isNaN(d.getTime())) return d;
   }
   // Derive from start date if no explicit race date was set.

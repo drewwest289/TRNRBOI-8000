@@ -11,14 +11,24 @@ const TYPE_LABEL = {
   rest:     'Rest',
 };
 
-/** Format a YYYY-MM-DD string as "Jun 2" */
+/**
+ * Format a YYYY-MM-DD string as "Jun 2" using local date constructors so
+ * timezones behind UTC don't shift the displayed date to the previous day.
+ */
 function shortDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/** Today's date as a YYYY-MM-DD string in local time */
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function WeekGrid({ week, runs, onDayClick }) {
-  const weekData = plan16[week - 1];
+  const weekData  = plan16[week - 1];
+  const todayStr  = getTodayStr();
 
   return (
     <div className="grid grid-cols-7 gap-1.5">
@@ -28,6 +38,7 @@ export default function WeekGrid({ week, runs, onDayClick }) {
         const dateStr = getDateForCell(week, i);
         const logs    = getLogsForDate(dateStr, runs);
         const isRest  = type === 'rest';
+        const isToday = dateStr === todayStr;
 
         // Distinguish "active run logged" from "rest/skip logged"
         const hasActiveLog = logs.some(l => l.type !== 'Rest');
@@ -53,7 +64,7 @@ export default function WeekGrid({ week, runs, onDayClick }) {
             key={i}
             className={`rounded-lg p-2 text-center border transition-colors select-none ${
               onDayClick ? 'cursor-pointer hover:brightness-125 active:scale-95' : ''
-            }`}
+            } ${isToday ? 'ring-1 ring-emerald-500/60' : ''}`}
             style={{
               borderColor,
               backgroundColor: bgColor,
@@ -62,9 +73,13 @@ export default function WeekGrid({ week, runs, onDayClick }) {
             onClick={() => onDayClick?.(dateStr, dayStr, logs)}
           >
             {/* Day name */}
-            <div className="text-xs text-slate-500 mb-0.5">{DAY_NAMES[i]}</div>
+            <div className={`text-xs mb-0.5 ${isToday ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+              {DAY_NAMES[i]}
+            </div>
             {/* Calendar date */}
-            <div className="text-[10px] text-slate-600 mb-1 leading-tight">{shortDate(dateStr)}</div>
+            <div className={`text-[10px] mb-1 leading-tight ${isToday ? 'text-emerald-400 font-medium' : 'text-slate-600'}`}>
+              {shortDate(dateStr)}
+            </div>
             {/* Plan type label */}
             <div className="text-xs font-semibold mb-1" style={{ color: labelColor }}>
               {TYPE_LABEL[type] || type}

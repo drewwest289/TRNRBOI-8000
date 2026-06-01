@@ -3,9 +3,11 @@ import { CalendarDays, X } from 'lucide-react';
 
 function addWeeks(dateStr, n) {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + n * 7);
-  return d.toISOString().substring(0, 10);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d); // local midnight — no UTC shift
+  date.setDate(date.getDate() + n * 7);
+  // Format back to YYYY-MM-DD using local getters (not toISOString which is UTC)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 /**
