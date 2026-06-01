@@ -1,35 +1,35 @@
-// Run type colors — used consistently across components and charts
+// Run type colors — GBC neon palette
 export const TYPE_COLOR = {
   // Plan day types (lowercase)
-  easy:     '#1D9E75',
-  long:     '#7F77DD',
-  race:     '#7F77DD',
-  cross:    '#378ADD',
-  tempo:    '#BA7517',
-  interval: '#BA7517',
-  rest:     '#475569',
+  easy:     '#00FF88',
+  long:     '#BB99FF',
+  race:     '#BB99FF',
+  cross:    '#00FFFF',
+  tempo:    '#FF9900',
+  interval: '#FF9900',
+  rest:     '#444466',
   // Log entry types (display labels)
-  'Easy':       '#1D9E75',
-  'Long run':   '#7F77DD',
-  'Cross-train':'#378ADD',
-  'Tempo':      '#BA7517',
-  'Intervals':  '#BA7517',
-  'Rest':       '#475569',
+  'Easy':        '#00FF88',
+  'Long run':    '#BB99FF',
+  'Cross-train': '#00FFFF',
+  'Tempo':       '#FF9900',
+  'Intervals':   '#FF9900',
+  'Rest':        '#444466',
 };
 
 export const TYPE_BG = {
-  easy:     'rgba(29,158,117,0.10)',
-  long:     'rgba(127,119,221,0.10)',
-  race:     'rgba(127,119,221,0.10)',
-  cross:    'rgba(55,138,221,0.10)',
-  tempo:    'rgba(186,117,23,0.10)',
-  interval: 'rgba(186,117,23,0.10)',
+  easy:     'rgba(0,255,136,0.12)',
+  long:     'rgba(187,153,255,0.12)',
+  race:     'rgba(187,153,255,0.12)',
+  cross:    'rgba(0,255,255,0.12)',
+  tempo:    'rgba(255,153,0,0.12)',
+  interval: 'rgba(255,153,0,0.12)',
   rest:     'transparent',
-  'Easy':       'rgba(29,158,117,0.10)',
-  'Long run':   'rgba(127,119,221,0.10)',
-  'Cross-train':'rgba(55,138,221,0.10)',
-  'Tempo':      'rgba(186,117,23,0.10)',
-  'Intervals':  'rgba(186,117,23,0.10)',
+  'Easy':        'rgba(0,255,136,0.12)',
+  'Long run':    'rgba(187,153,255,0.12)',
+  'Cross-train': 'rgba(0,255,255,0.12)',
+  'Tempo':       'rgba(255,153,0,0.12)',
+  'Intervals':   'rgba(255,153,0,0.12)',
 };
 
-export const CHART_COLORS = ['#1D9E75', '#7F77DD', '#378ADD', '#BA7517', '#A32D2D'];
+export const CHART_COLORS = ['#00FF88', '#BB99FF', '#00FFFF', '#FF9900', '#FF4455'];

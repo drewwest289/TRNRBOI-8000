@@ -50,19 +50,19 @@ export default function MileageChart({ runs, currentWeek }) {
             strokeDasharray="3 3"
           />
         )}
-        <Bar dataKey="planned" radius={[2, 2, 0, 0]}>
+        <Bar dataKey="planned" radius={[0, 0, 0, 0]}>
           {data.map((entry, i) => (
             <Cell
               key={i}
-              fill={entry.isRace ? 'rgba(127,119,221,0.25)' : 'rgba(29,158,117,0.20)'}
+              fill={entry.isRace ? 'rgba(187,153,255,0.25)' : 'rgba(0,255,136,0.18)'}
             />
           ))}
         </Bar>
-        <Bar dataKey="actual" radius={[2, 2, 0, 0]}>
+        <Bar dataKey="actual" radius={[0, 0, 0, 0]}>
           {data.map((entry, i) => (
             <Cell
               key={i}
-              fill={entry.isRace ? '#7F77DD' : '#1D9E75'}
+              fill={entry.isRace ? '#BB99FF' : '#00FF88'}
             />
           ))}
         </Bar>
