@@ -19,6 +19,7 @@ Allow the user to mark a scheduled run as skipped and have the training plan aut
 - Add a "skip" action to each day on the Plan tab
 - When skipped, redistribute the missed workout later in the schedule
 - Account for taper weeks and race day proximity when rescheduling
+- More clarity between goal and actual result on cards
 
 ## Longer term
 
