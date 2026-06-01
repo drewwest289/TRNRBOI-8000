@@ -11,21 +11,45 @@ const TABS = [
 
 export default function Nav({ active, onChange }) {
   return (
-    <nav className="flex gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800 mb-6">
-      {TABS.map(({ id, label, Icon }) => (
-        <button
-          key={id}
-          onClick={() => onChange(id)}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-            active === id
-              ? 'bg-slate-800 text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <Icon size={14} />
-          <span className="hidden sm:inline">{label}</span>
-        </button>
-      ))}
+    <nav
+      className="flex gap-0 mb-6 overflow-x-auto"
+      style={{ border: '2px solid #39FF14', boxShadow: '4px 4px 0px rgba(57,255,20,0.25)' }}
+    >
+      {TABS.map(({ id, label, Icon }) => {
+        const isActive = active === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            style={
+              isActive
+                ? {
+                    backgroundColor: '#39FF14',
+                    color: '#0c0c0c',
+                    borderRight: '2px solid #25aa00',
+                    boxShadow: 'inset 0 -3px 0 #1a6600',
+                    flex: '1 1 0',
+                  }
+                : {
+                    backgroundColor: 'transparent',
+                    color: '#555',
+                    borderRight: '1px solid #1e1e1e',
+                    flex: '1 1 0',
+                  }
+            }
+            className="flex items-center justify-center gap-1 px-2 py-2.5 text-sm font-medium"
+          >
+            {/* Pixel cursor indicator on active tab */}
+            {isActive && (
+              <span style={{ fontSize: '8px', lineHeight: 1, color: '#0c0c0c' }}>▶</span>
+            )}
+            <Icon size={13} strokeWidth={2.5} />
+            <span className="hidden sm:inline" style={{ fontSize: '7px' }}>
+              {label.toUpperCase()}
+            </span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

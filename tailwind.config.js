@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-        mono: ['"SF Mono"', '"Fira Code"', 'monospace'],
+        sans: ['"Press Start 2P"', 'monospace'],
+        mono: ['"Press Start 2P"', 'monospace'],
       },
     },
   },

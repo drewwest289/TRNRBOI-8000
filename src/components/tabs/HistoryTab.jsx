@@ -553,11 +553,11 @@ export default function HistoryTab() {
             <div className="section-label">Weekly mileage (last 12 weeks)</div>
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={weeklyData} barSize={10} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="#1e293b" />
+                <CartesianGrid vertical={false} stroke="#1e293b" strokeDasharray="4 4" />
                 <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip formatter={v => `${v} mi`} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="miles" fill="#1D9E75" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="miles" fill="#00FF88" radius={[0, 0, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -572,12 +572,12 @@ export default function HistoryTab() {
                 </span>
                 {hasHR && (
                   <div className="flex items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-400">
-                      <span style={{ display:'inline-block', width:14, height:2, borderRadius:1, background:'#7F77DD' }} />
+                    <span className="flex items-center gap-1.5" style={{ color: '#BB99FF' }}>
+                      <span style={{ display:'inline-block', width:14, height:2, background:'#BB99FF' }} />
                       Pace
                     </span>
-                    <span className="flex items-center gap-1.5" style={{ color:'#f87171' }}>
-                      <span style={{ display:'inline-block', width:14, height:2, borderRadius:1, background:'#f87171' }} />
+                    <span className="flex items-center gap-1.5" style={{ color:'#FF9900' }}>
+                      <span style={{ display:'inline-block', width:14, height:2, background:'#FF9900' }} />
                       HR
                     </span>
                   </div>
@@ -589,18 +589,7 @@ export default function HistoryTab() {
                   data={paceData}
                   margin={{ top: 8, right: hasHR ? 8 : 8, left: 0, bottom: 4 }}
                 >
-                  <defs>
-                    {/* Gradient: transparent at top → semi-opaque at bottom.
-                        With reversed Y-axis the Area fills upward (toward the
-                        axis minimum at the top), so the fill is most opaque
-                        right at the data line and fades away from it. */}
-                    <linearGradient id="paceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#7F77DD" stopOpacity={0.03} />
-                      <stop offset="100%" stopColor="#7F77DD" stopOpacity={0.22} />
-                    </linearGradient>
-                  </defs>
-
-                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="4 4" vertical={false} />
 
                   <XAxis
                     dataKey="date"
@@ -629,7 +618,7 @@ export default function HistoryTab() {
                     <YAxis
                       yAxisId="hr"
                       orientation="right"
-                      tick={{ fill: '#f8716199', fontSize: 10 }}
+                      tick={{ fill: '#FF990099', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                       domain={['auto', 'auto']}
@@ -642,27 +631,27 @@ export default function HistoryTab() {
                     cursor={{ stroke: '#334155', strokeWidth: 1 }}
                   />
 
-                  {/* Pace area with gradient fill */}
+                  {/* Pace area — flat neon fill, no gradient */}
                   <Area
                     yAxisId="pace"
                     type="monotone"
                     dataKey="pace"
-                    stroke="#7F77DD"
+                    stroke="#BB99FF"
                     strokeWidth={2}
-                    fill="url(#paceGradient)"
-                    dot={{ fill: '#7F77DD', r: 3, strokeWidth: 0 }}
+                    fill="rgba(187,153,255,0.12)"
+                    dot={{ fill: '#BB99FF', r: 3, strokeWidth: 0 }}
                     activeDot={{ r: 5, strokeWidth: 0 }}
                   />
 
-                  {/* Heart-rate line (coral/red, right axis) */}
+                  {/* Heart-rate line (neon orange, right axis) */}
                   {hasHR && (
                     <Line
                       yAxisId="hr"
                       type="monotone"
                       dataKey="hr"
-                      stroke="#f87171"
+                      stroke="#FF9900"
                       strokeWidth={1.5}
-                      dot={{ fill: '#f87171', r: 2.5, strokeWidth: 0 }}
+                      dot={{ fill: '#FF9900', r: 2.5, strokeWidth: 0 }}
                       activeDot={{ r: 4.5, strokeWidth: 0 }}
                       connectNulls
                     />

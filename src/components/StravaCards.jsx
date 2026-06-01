@@ -101,14 +101,14 @@ function StreamsChart({ activityId }) {
       {(hasHR || hasPace) && (
         <div className="flex items-center gap-3 text-xs mb-2 justify-end">
           {hasPace && (
-            <span className="flex items-center gap-1.5 text-slate-400">
-              <span style={{ display: 'inline-block', width: 12, height: 2, borderRadius: 1, background: '#7F77DD' }} />
+            <span className="flex items-center gap-1.5" style={{ color: '#BB99FF' }}>
+              <span style={{ display: 'inline-block', width: 12, height: 2, background: '#BB99FF' }} />
               Pace
             </span>
           )}
           {hasHR && (
-            <span className="flex items-center gap-1.5" style={{ color: '#f87171' }}>
-              <span style={{ display: 'inline-block', width: 12, height: 2, borderRadius: 1, background: '#f87171' }} />
+            <span className="flex items-center gap-1.5" style={{ color: '#FF9900' }}>
+              <span style={{ display: 'inline-block', width: 12, height: 2, background: '#FF9900' }} />
               HR
             </span>
           )}
@@ -116,13 +116,7 @@ function StreamsChart({ activityId }) {
       )}
       <ResponsiveContainer width="100%" height={180}>
         <ComposedChart data={points} margin={{ top: 4, right: hasHR ? 8 : 4, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="streamPaceGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#7F77DD" stopOpacity={0.03} />
-              <stop offset="100%" stopColor="#7F77DD" stopOpacity={0.20} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+          <CartesianGrid stroke="#1e293b" strokeDasharray="4 4" vertical={false} />
           <XAxis
             dataKey="t"
             tick={{ fill: '#64748b', fontSize: 10 }}
@@ -148,7 +142,7 @@ function StreamsChart({ activityId }) {
             <YAxis
               yAxisId="hr"
               orientation="right"
-              tick={{ fill: '#f8716199', fontSize: 10 }}
+              tick={{ fill: '#FF990099', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               domain={['auto', 'auto']}
@@ -161,9 +155,9 @@ function StreamsChart({ activityId }) {
               yAxisId="pace"
               type="monotone"
               dataKey="pace"
-              stroke="#7F77DD"
+              stroke="#BB99FF"
               strokeWidth={1.5}
-              fill="url(#streamPaceGrad)"
+              fill="rgba(187,153,255,0.12)"
               dot={false}
               activeDot={{ r: 4, strokeWidth: 0 }}
               connectNulls
@@ -174,7 +168,7 @@ function StreamsChart({ activityId }) {
               yAxisId="hr"
               type="monotone"
               dataKey="hr"
-              stroke="#f87171"
+              stroke="#FF9900"
               strokeWidth={1.5}
               dot={false}
               activeDot={{ r: 4, strokeWidth: 0 }}
