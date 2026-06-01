@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useRuns } from '../../hooks/useRuns';
 import { plan16, getMiles, getActualMilesForWeek } from '../../lib/plan';
+import { TOKENS } from '../../lib/colors';
 import WeekGrid from '../WeekGrid';
 import MileageChart from '../MileageChart';
 import PlanSettings from '../PlanSettings';
@@ -10,9 +11,17 @@ import DayDrawer from '../DayDrawer';
 function MetricCard({ label, value, sub, accent }) {
   return (
     <div className="bg-slate-800 rounded-xl p-4">
-      <div className="text-xs text-slate-500 mb-1">{label}</div>
-      <div className={`text-2xl font-semibold ${accent || 'text-white'}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+      <div className="text-xs" style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+      <div
+        className="text-2xl font-semibold"
+        style={{
+          fontFamily: '"Press Start 2P", monospace',
+          color: accent ? TOKENS.green : 'var(--green)',
+        }}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{sub}</div>}
     </div>
   );
 }
@@ -178,14 +187,14 @@ export default function PlanTab({ plan }) {
         {/* Legend */}
         <div className="flex flex-wrap gap-3 mt-4">
           {[
-            { color: '#1D9E75', label: 'Easy' },
-            { color: '#7F77DD', label: 'Long' },
-            { color: '#378ADD', label: 'Cross' },
-            { color: '#BA7517', label: 'Tempo / Interval' },
+            { color: TOKENS.green,  label: 'EASY' },
+            { color: TOKENS.purple, label: 'LONG' },
+            { color: TOKENS.blue,   label: 'CROSS' },
+            { color: TOKENS.red,    label: 'TEMPO / INTV' },
           ].map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
-              <span className="text-xs text-slate-500">{label}</span>
+              <div className="w-2.5 h-2.5" style={{ backgroundColor: color }} />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
             </div>
           ))}
         </div>
@@ -197,12 +206,12 @@ export default function PlanTab({ plan }) {
           <div className="section-label mb-0">16-week mileage overview</div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-2 rounded-sm" style={{ backgroundColor: 'rgba(29,158,117,0.25)' }} />
-              <span className="text-xs text-slate-500">Planned</span>
+              <div className="w-3 h-2" style={{ backgroundColor: 'rgba(124,255,158,0.25)' }} />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>PLANNED</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-2 rounded-sm bg-emerald-500" />
-              <span className="text-xs text-slate-500">Logged</span>
+              <div className="w-3 h-2" style={{ backgroundColor: TOKENS.green }} />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>LOGGED</span>
             </div>
           </div>
         </div>

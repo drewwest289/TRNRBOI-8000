@@ -5,12 +5,10 @@ import { useRuns } from '../../hooks/useRuns';
 import { useRunners } from '../../hooks/useRunners';
 import { paceStr } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
-import { TYPE_COLOR } from '../../lib/colors';
+import { chipClass } from '../../lib/colors';
 
 const RUN_TYPES = ['Easy', 'Tempo', 'Long run', 'Intervals', 'Cross-train'];
 
-// Bug fix: toISOString() returns UTC — use local getters so the date
-// matches the user's clock, not UTC midnight.
 const localToday = () => localDateStr(new Date());
 
 export default function LogTab() {
@@ -20,18 +18,14 @@ export default function LogTab() {
   const [form, setForm] = useState({
     user: '', date: localToday(), dist: '', dur: '', type: 'Easy', notes: '',
   });
-  const [feedback, setFeedback] = useState(''); // '' | 'error:<msg>' | 'ok'
+  const [feedback, setFeedback] = useState('');
 
-  // Bug fix: seed form.user once runners load from Dexie.
-  // Without this, form.user stays '' and the select's controlled
-  // value mismatches what's visually shown (first option).
   useEffect(() => {
     if (runners.length > 0 && !form.user) {
       setForm(f => ({ ...f, user: runners[0].name }));
     }
   }, [runners]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Clears any error message as soon as the user starts correcting a field.
   const set = (k, v) => {
     setFeedback('');
     setForm(f => ({ ...f, [k]: v }));
@@ -68,7 +62,7 @@ export default function LogTab() {
 
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Runner</label>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>RUNNER</label>
             <select className="field" value={form.user} onChange={e => set('user', e.target.value)}>
               {runners.map(r => (
                 <option key={r.name} value={r.name}>{r.name}</option>
@@ -76,11 +70,9 @@ export default function LogTab() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Date</label>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>DATE</label>
             <input
-              type="date"
-              className="field"
-              value={form.date}
+              type="date" className="field" value={form.date}
               onChange={e => set('date', e.target.value)}
             />
           </div>
@@ -88,31 +80,17 @@ export default function LogTab() {
 
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Distance (mi)</label>
-            <input
-              type="number"
-              className="field"
-              placeholder="3.1"
-              step="0.1"
-              min="0"
-              value={form.dist}
-              onChange={e => set('dist', e.target.value)}
-            />
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>DIST (MI)</label>
+            <input type="number" className="field" placeholder="3.1" step="0.1" min="0"
+              value={form.dist} onChange={e => set('dist', e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Duration (min)</label>
-            <input
-              type="number"
-              className="field"
-              placeholder="30"
-              step="1"
-              min="0"
-              value={form.dur}
-              onChange={e => set('dur', e.target.value)}
-            />
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>TIME (MIN)</label>
+            <input type="number" className="field" placeholder="30" step="1" min="0"
+              value={form.dur} onChange={e => set('dur', e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Type</label>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>TYPE</label>
             <select className="field" value={form.type} onChange={e => set('type', e.target.value)}>
               {RUN_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
@@ -121,15 +99,10 @@ export default function LogTab() {
 
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-xs text-slate-400 mb-1">Notes</label>
-            <input
-              type="text"
-              className="field"
-              placeholder="How did it feel?"
-              value={form.notes}
-              onChange={e => set('notes', e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-            />
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>NOTES</label>
+            <input type="text" className="field" placeholder="How did it feel?"
+              value={form.notes} onChange={e => set('notes', e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()} />
           </div>
           <div className="flex items-end">
             <button className="btn" onClick={handleAdd}>
@@ -139,53 +112,54 @@ export default function LogTab() {
         </div>
 
         {feedback.startsWith('error:') && (
-          <p className="text-xs text-red-400 mt-2">{feedback.slice(6)}</p>
+          <p className="text-xs mt-2" style={{ color: 'var(--red)' }}>{feedback.slice(6)}</p>
         )}
         {feedback === 'ok' && (
-          <p className="text-xs text-emerald-400 mt-2">Run added ✓</p>
+          <p className="text-xs mt-2" style={{ color: 'var(--green)' }}>Run added ✓</p>
         )}
       </div>
 
-      {/* Recent runs */}
+      {/* Recent runs — 48px rows with chips */}
       <div className="card">
         <div className="section-label">Recent runs</div>
         {runs.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 text-sm">No runs logged yet</div>
+          <div className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
+            No runs logged yet
+          </div>
         ) : (
-          <div className="space-y-0">
-            {runs.slice(0, 25).map(r => {
-              const color = TYPE_COLOR[r.type] || '#64748b';
-              const pace  = paceStr(r.dist, r.dur);
+          <div>
+            {runs.slice(0, 25).map((r, idx) => {
+              const pace = paceStr(r.dist, r.dur);
               return (
                 <div
                   key={r.id}
-                  className="grid gap-3 items-center py-3 border-b border-slate-800 last:border-0 group"
-                  style={{ gridTemplateColumns: '80px 1fr auto auto' }}
+                  className="grid gap-3 items-center group"
+                  style={{
+                    gridTemplateColumns: '76px 1fr 60px 52px 32px',
+                    minHeight: '48px',
+                    padding: '0 0',
+                    borderBottom: '1px solid var(--border)',
+                    backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
+                  }}
                 >
-                  <div className="text-xs text-slate-500">{r.date}</div>
-                  <div>
-                    <div className="text-sm text-white flex items-center gap-2">
-                      {r.user}
-                      <span
-                        className="text-xs font-medium px-1.5 py-0.5 rounded-full"
-                        style={{ color, backgroundColor: `${color}22` }}
-                      >
-                        {r.type}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {r.dur} min · {pace}/mi{r.notes ? ` · ${r.notes}` : ''}
-                    </div>
+                  <div className="text-xs pl-2" style={{ color: 'var(--text-muted)' }}>{r.date}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user}</span>
+                    <span className={chipClass(r.type)}>{r.type}</span>
                   </div>
-                  <div className="text-sm font-semibold text-white">
+                  <div className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                    {pace}/mi
+                  </div>
+                  <div className="text-sm font-bold text-right pr-2" style={{ color: 'var(--text-primary)' }}>
                     {r.dist.toFixed(1)} mi
                   </div>
                   <button
                     onClick={() => handleDelete(r.id)}
-                    className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                    style={{ color: 'var(--text-muted)', transition: 'none' }}
                     aria-label="Delete run"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               );

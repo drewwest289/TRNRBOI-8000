@@ -9,11 +9,30 @@ const TABS = [
   { id: 'history',   label: 'History',   Icon: BarChart2 },
 ];
 
+const TAB_BASE = {
+  fontFamily: '"Space Mono", monospace',
+  fontWeight: 700,
+  fontSize: '7px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  border: 'none',
+  outline: 'none',
+  cursor: 'pointer',
+  userSelect: 'none',
+  transition: 'none',
+  flex: '1 1 0',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '5px',
+  padding: '10px 8px',
+};
+
 export default function Nav({ active, onChange }) {
   return (
     <nav
-      className="flex gap-0 mb-6 overflow-x-auto"
-      style={{ border: '2px solid #39FF14', boxShadow: '4px 4px 0px rgba(57,255,20,0.25)' }}
+      className="flex mb-6 overflow-x-auto"
+      style={{ borderBottom: '1px solid var(--green)' }}
     >
       {TABS.map(({ id, label, Icon }) => {
         const isActive = active === id;
@@ -21,32 +40,15 @@ export default function Nav({ active, onChange }) {
           <button
             key={id}
             onClick={() => onChange(id)}
-            style={
-              isActive
-                ? {
-                    backgroundColor: '#39FF14',
-                    color: '#0c0c0c',
-                    borderRight: '2px solid #25aa00',
-                    boxShadow: 'inset 0 -3px 0 #1a6600',
-                    flex: '1 1 0',
-                  }
-                : {
-                    backgroundColor: 'transparent',
-                    color: '#555',
-                    borderRight: '1px solid #1e1e1e',
-                    flex: '1 1 0',
-                  }
-            }
-            className="flex items-center justify-center gap-1 px-2 py-2.5 text-sm font-medium"
+            style={{
+              ...TAB_BASE,
+              background:   isActive ? 'var(--green)'    : 'transparent',
+              color:        isActive ? 'var(--bg-primary)' : 'var(--text-muted)',
+              borderBottom: isActive ? '2px solid var(--green)' : '2px solid transparent',
+            }}
           >
-            {/* Pixel cursor indicator on active tab */}
-            {isActive && (
-              <span style={{ fontSize: '8px', lineHeight: 1, color: '#0c0c0c' }}>▶</span>
-            )}
-            <Icon size={13} strokeWidth={2.5} />
-            <span className="hidden sm:inline" style={{ fontSize: '7px' }}>
-              {label.toUpperCase()}
-            </span>
+            <Icon size={13} strokeWidth={2} />
+            <span className="hidden sm:inline">{label}</span>
           </button>
         );
       })}

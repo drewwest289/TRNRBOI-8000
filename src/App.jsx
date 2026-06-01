@@ -27,14 +27,22 @@ export default function App() {
         {/* Header */}
         <header className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-xl font-semibold text-white tracking-tight">
+            <h1
+              className="text-white tracking-tight"
+              style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '14px', lineHeight: 1.4 }}
+            >
               TRNRBOI 8000
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">16-week plan · intermediate</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              16-WEEK TRAINING COMPUTER
+            </p>
           </div>
           <div className="text-right">
-            <div className="text-xs text-slate-500">Race day</div>
-            <div className="text-sm font-semibold text-white mt-0.5">
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>RACE DAY</div>
+            <div
+              className="mt-0.5"
+              style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '11px', color: 'var(--green)' }}
+            >
               <RaceCountdown days={plan.daysUntilRace} />
             </div>
           </div>

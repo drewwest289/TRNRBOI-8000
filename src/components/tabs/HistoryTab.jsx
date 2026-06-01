@@ -11,7 +11,7 @@ import { useRunners } from '../../hooks/useRunners';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { parseHAEJson } from '../../lib/normalize';
-import { TYPE_COLOR, CHART_COLORS } from '../../lib/colors';
+import { TYPE_COLOR, CHART_COLORS, chipClass, TOKENS } from '../../lib/colors';
 import { StravaStatsCard, StravaActivitiesCard } from '../StravaCards';
 
 // ── Chart data helpers ────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ const PaceHRTooltip = ({ active, payload }) => {
       <div className="space-y-1">
         <div className="flex justify-between gap-4">
           <span className="text-slate-500">Pace</span>
-          <span style={{ color: '#7F77DD' }}>{formatPaceTick(d.pace)}/mi</span>
+          <span style={{ color: TOKENS.purple }}>{formatPaceTick(d.pace)}/mi</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-slate-500">Distance</span>
@@ -96,7 +96,7 @@ const PaceHRTooltip = ({ active, payload }) => {
         {d.hr != null && (
           <div className="flex justify-between gap-4">
             <span className="text-slate-500">Heart rate</span>
-            <span style={{ color: '#f87171' }}>{d.hr} bpm</span>
+            <span style={{ color: TOKENS.red }}>{d.hr} bpm</span>
           </div>
         )}
       </div>
@@ -186,12 +186,7 @@ function WorkoutList({ workouts, selected, onToggle }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-medium text-white">{w.name}</span>
-                <span
-                  className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                  style={{ color, backgroundColor: `${color}22` }}
-                >
-                  {w.type}
-                </span>
+                <span className={chipClass(w.type)}>{w.type}</span>
                 {isDupe && (
                   <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-900/30 text-amber-500">
                     already in log
@@ -557,7 +552,7 @@ export default function HistoryTab() {
                 <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip formatter={v => `${v} mi`} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="miles" fill="#00FF88" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="miles" fill={TOKENS.green} radius={[0, 0, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -572,12 +567,12 @@ export default function HistoryTab() {
                 </span>
                 {hasHR && (
                   <div className="flex items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1.5" style={{ color: '#BB99FF' }}>
-                      <span style={{ display:'inline-block', width:14, height:2, background:'#BB99FF' }} />
-                      Pace
+                    <span className="flex items-center gap-1.5" style={{ color: TOKENS.purple }}>
+                      <span style={{ display:'inline-block', width:14, height:2, background: TOKENS.purple }} />
+                      PACE
                     </span>
-                    <span className="flex items-center gap-1.5" style={{ color:'#FF9900' }}>
-                      <span style={{ display:'inline-block', width:14, height:2, background:'#FF9900' }} />
+                    <span className="flex items-center gap-1.5" style={{ color: TOKENS.red }}>
+                      <span style={{ display:'inline-block', width:14, height:2, background: TOKENS.red }} />
                       HR
                     </span>
                   </div>
@@ -618,7 +613,7 @@ export default function HistoryTab() {
                     <YAxis
                       yAxisId="hr"
                       orientation="right"
-                      tick={{ fill: '#FF990099', fontSize: 10 }}
+                      tick={{ fill: TOKENS.red + '99', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                       domain={['auto', 'auto']}
@@ -631,27 +626,27 @@ export default function HistoryTab() {
                     cursor={{ stroke: '#334155', strokeWidth: 1 }}
                   />
 
-                  {/* Pace area — flat neon fill, no gradient */}
+                  {/* Pace area — blue per spec, flat fill */}
                   <Area
                     yAxisId="pace"
                     type="monotone"
                     dataKey="pace"
-                    stroke="#BB99FF"
+                    stroke={TOKENS.blue}
                     strokeWidth={2}
-                    fill="rgba(187,153,255,0.12)"
-                    dot={{ fill: '#BB99FF', r: 3, strokeWidth: 0 }}
+                    fill="rgba(77,163,255,0.12)"
+                    dot={{ fill: TOKENS.blue, r: 3, strokeWidth: 0 }}
                     activeDot={{ r: 5, strokeWidth: 0 }}
                   />
 
-                  {/* Heart-rate line (neon orange, right axis) */}
+                  {/* Heart-rate line — red per spec */}
                   {hasHR && (
                     <Line
                       yAxisId="hr"
                       type="monotone"
                       dataKey="hr"
-                      stroke="#FF9900"
+                      stroke={TOKENS.red}
                       strokeWidth={1.5}
-                      dot={{ fill: '#FF9900', r: 2.5, strokeWidth: 0 }}
+                      dot={{ fill: TOKENS.red, r: 2.5, strokeWidth: 0 }}
                       activeDot={{ r: 4.5, strokeWidth: 0 }}
                       connectNulls
                     />
@@ -692,9 +687,9 @@ export default function HistoryTab() {
                     const pct   = Math.round((entry.count / runs.length) * 100);
                     return (
                       <div key={entry.type} className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-xs text-slate-300 w-24">{entry.type}</span>
-                        <span className="text-xs text-slate-500">{entry.count} ({pct}%)</span>
+                        <div className="w-2.5 h-2.5 flex-shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-xs w-24" style={{ color: 'var(--text-primary)' }}>{entry.type}</span>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{entry.count} ({pct}%)</span>
                       </div>
                     );
                   })}
@@ -709,31 +704,32 @@ export default function HistoryTab() {
       <div className="card">
         <div className="section-label">All runs</div>
         {runs.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 text-sm">No runs logged yet</div>
+          <div className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No runs logged yet</div>
         ) : (
           <div>
-            {runs.map(r => {
-              const color = TYPE_COLOR[r.type] || '#64748b';
-              const pace  = paceStr(r.dist, r.dur);
+            {runs.map((r, idx) => {
+              const pace = paceStr(r.dist, r.dur);
               return (
                 <div
                   key={r.id}
-                  className="grid gap-3 items-center py-3 border-b border-slate-800 last:border-0"
-                  style={{ gridTemplateColumns: '80px 1fr auto' }}
+                  className="grid gap-3 items-center"
+                  style={{
+                    gridTemplateColumns: '76px 1fr 52px 52px',
+                    minHeight: '48px',
+                    borderBottom: '1px solid var(--border)',
+                    backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
+                    padding: '0 4px',
+                  }}
                 >
-                  <div className="text-xs text-slate-500">{r.date}</div>
-                  <div>
-                    <div className="text-sm text-white flex items-center gap-2 flex-wrap">
-                      {r.user}
-                      <span className="text-xs font-medium px-1.5 py-0.5 rounded-full" style={{ color, backgroundColor: `${color}22` }}>
-                        {r.type}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {r.dur} min · {pace}/mi{r.notes ? ` · ${r.notes}` : ''}
-                    </div>
+                  <div className="text-xs pl-1" style={{ color: 'var(--text-muted)' }}>{r.date}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user}</span>
+                    <span className={chipClass(r.type)}>{r.type}</span>
                   </div>
-                  <div className="text-sm font-semibold text-white">{r.dist.toFixed(1)} mi</div>
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{pace}/mi</div>
+                  <div className="text-sm font-bold text-right pr-1" style={{ color: 'var(--text-primary)' }}>
+                    {r.dist.toFixed(1)} mi
+                  </div>
                 </div>
               );
             })}

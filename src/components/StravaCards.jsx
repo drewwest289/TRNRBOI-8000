@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { db } from '../db';
 import { paceStr, formatPaceTick } from '../lib/pace';
-import { TYPE_COLOR } from '../lib/colors';
+import { TYPE_COLOR, chipClass, TOKENS } from '../lib/colors';
 import {
   fetchStravaAthlete,
   fetchStravaActivities,
@@ -101,14 +101,14 @@ function StreamsChart({ activityId }) {
       {(hasHR || hasPace) && (
         <div className="flex items-center gap-3 text-xs mb-2 justify-end">
           {hasPace && (
-            <span className="flex items-center gap-1.5" style={{ color: '#BB99FF' }}>
-              <span style={{ display: 'inline-block', width: 12, height: 2, background: '#BB99FF' }} />
-              Pace
+            <span className="flex items-center gap-1.5" style={{ color: TOKENS.blue }}>
+              <span style={{ display: 'inline-block', width: 12, height: 2, background: TOKENS.blue }} />
+              PACE
             </span>
           )}
           {hasHR && (
-            <span className="flex items-center gap-1.5" style={{ color: '#FF9900' }}>
-              <span style={{ display: 'inline-block', width: 12, height: 2, background: '#FF9900' }} />
+            <span className="flex items-center gap-1.5" style={{ color: TOKENS.red }}>
+              <span style={{ display: 'inline-block', width: 12, height: 2, background: TOKENS.red }} />
               HR
             </span>
           )}
@@ -142,7 +142,7 @@ function StreamsChart({ activityId }) {
             <YAxis
               yAxisId="hr"
               orientation="right"
-              tick={{ fill: '#FF990099', fontSize: 10 }}
+              tick={{ fill: TOKENS.red + '99', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               domain={['auto', 'auto']}
@@ -155,9 +155,9 @@ function StreamsChart({ activityId }) {
               yAxisId="pace"
               type="monotone"
               dataKey="pace"
-              stroke="#BB99FF"
+              stroke={TOKENS.blue}
               strokeWidth={1.5}
-              fill="rgba(187,153,255,0.12)"
+              fill="rgba(77,163,255,0.12)"
               dot={false}
               activeDot={{ r: 4, strokeWidth: 0 }}
               connectNulls
@@ -168,7 +168,7 @@ function StreamsChart({ activityId }) {
               yAxisId="hr"
               type="monotone"
               dataKey="hr"
-              stroke="#FF9900"
+              stroke={TOKENS.red}
               strokeWidth={1.5}
               dot={false}
               activeDot={{ r: 4, strokeWidth: 0 }}
@@ -209,15 +209,10 @@ function ActivityRow({ activity, checked, onToggle, onDismiss, disabled }) {
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-white truncate">{name}</span>
-            <span
-              className="text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
-              style={{ color, backgroundColor: `${color}22` }}
-            >
-              {type}
-            </span>
+            <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{name}</span>
+            <span className={chipClass(type) + ' flex-shrink-0'}>{type}</span>
             {isDupe && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-900/30 text-amber-500 flex-shrink-0">
+              <span className="chip flex-shrink-0" style={{ color: TOKENS.yellow, borderColor: TOKENS.yellow }}>
                 in log
               </span>
             )}

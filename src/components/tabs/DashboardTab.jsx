@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, MapPin, Users } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { CHART_COLORS } from '../../lib/colors';
+import { CHART_COLORS, TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -67,10 +67,10 @@ function computePRs(activities) {
 // Strava workout_type: 0=default, 1=race, 2=long run, 3=workout
 const WORKOUT_TYPE_MAP = { 0: 'Easy', 1: 'Race', 2: 'Long run', 3: 'Workout' };
 const WORKOUT_TYPE_COLORS = {
-  Easy:     '#1D9E75',
-  'Long run':'#7F77DD',
-  Race:     '#A32D2D',
-  Workout:  '#BA7517',
+  Easy:      TOKENS.green,
+  'Long run': TOKENS.purple,
+  Race:       TOKENS.yellow,
+  Workout:    TOKENS.red,
 };
 
 function computeBreakdown(activities) {
@@ -120,9 +120,14 @@ function Skeleton({ className = '' }) {
 function MetricCard({ label, value, sub }) {
   return (
     <div className="bg-slate-800 rounded-xl p-4">
-      <div className="text-xs text-slate-500 mb-1">{label}</div>
-      <div className="text-2xl font-semibold text-white">{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+      <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
+      <div
+        className="text-2xl font-semibold"
+        style={{ fontFamily: '"Press Start 2P", monospace', color: 'var(--green)' }}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{sub}</div>}
     </div>
   );
 }
@@ -323,14 +328,24 @@ export default function DashboardTab() {
         ) : (
           <div className="divide-y divide-slate-800">
             {prs.map(pr => (
-              <div key={pr.name} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                <div className="text-sm text-slate-300">{pr.name}</div>
+              <div
+                key={pr.name}
+                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                style={{ borderBottom: '1px solid var(--border)' }}
+              >
+                <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{pr.name}</div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-white tabular-nums">
-                    {pr.time ?? <span className="text-slate-600">—</span>}
+                  <div
+                    className="text-sm font-bold tabular-nums"
+                    style={{
+                      fontFamily: '"Press Start 2P", monospace',
+                      color: pr.time ? TOKENS.green : TOKENS.textMuted,
+                    }}
+                  >
+                    {pr.time ?? '—'}
                   </div>
                   {pr.date && (
-                    <div className="text-xs text-slate-600 mt-0.5">{pr.date}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{pr.date}</div>
                   )}
                 </div>
               </div>
@@ -377,12 +392,9 @@ export default function DashboardTab() {
                 const pct   = Math.round((entry.count / totalRuns) * 100);
                 return (
                   <div key={entry.type} className="flex items-center gap-2">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="text-xs text-slate-300 w-20">{entry.type}</span>
-                    <span className="text-xs text-slate-500">
+                    <div className="w-2.5 h-2.5 flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="text-xs w-20" style={{ color: 'var(--text-primary)' }}>{entry.type}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {entry.count} ({pct}%)
                     </span>
                   </div>

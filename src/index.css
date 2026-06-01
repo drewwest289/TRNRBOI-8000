@@ -2,40 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Base ──────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRNRBOI 8000 — Design System
+   All color values live exclusively in the :root block below.
+   Components reference tokens via var(--token) or Tailwind utilities.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+
+:root {
+  --bg-primary:  #0B0F1A;
+  --bg-panel:    #111827;
+  --bg-nested:   #1A2232;
+  --border:      #283442;
+  --text-primary:#E6F5E6;
+  --text-muted:  #8AA0B2;
+
+  /* Brand / run-type palette */
+  --green:       #7CFF9E;   /* Easy, primary brand */
+  --blue:        #4DA3FF;   /* Cross-train, data */
+  --purple:      #B36BFF;   /* Long run, highlights */
+  --red:         #FF5C5C;   /* HR, alerts, tempo */
+  --yellow:      #FFD44D;   /* Achievements */
+
+  /* Glow levels */
+  --glow-low:    0 0  4px rgba(124,255,158,0.20);
+  --glow-mid:    0 0  8px rgba(124,255,158,0.40);
+  --glow-high:   0 0 16px rgba(124,255,158,0.67);
+
+  /* Grid line for retro texture */
+  --grid-line:   #1D2433;
+}
+
+/* ── Base layer ─────────────────────────────────────────────────────────────── */
 
 @layer base {
   * {
     box-sizing: border-box;
-    /* Hard square corners everywhere — GBC had zero rounding */
-    border-radius: 0 !important;
-    /* Step transitions feel digital, not smooth */
+    border-radius: 0 !important;   /* No rounded corners — spec: 0px */
     transition-timing-function: steps(1) !important;
-    transition-duration: 50ms !important;
+    transition-duration: 60ms !important;
   }
 
   input[type=number] { -moz-appearance: textfield; }
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-  html {
-    /* Shrink rem base so Press Start 2P sizes are readable */
-    font-size: 10px;
-  }
+  html { font-size: 10px; }
 
   body {
-    @apply text-white font-sans;
-    font-family: 'Press Start 2P', monospace !important;
+    font-family: 'Space Mono', monospace;
     font-size: 10px;
-    line-height: 1.9;
-    background-color: #0c0c0c;
-    /* Subtle pixel dot grid — backlit screen texture */
+    line-height: 1.8;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    /* 1px grid lines at --grid-line for retro screen texture */
     background-image:
-      radial-gradient(circle, rgba(57, 255, 20, 0.045) 1px, transparent 1px);
-    background-size: 4px 4px;
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 
-  /* Scanline overlay — simulates GBC screen rows */
+  /* Scanline overlay — subtle horizontal bands */
   body::after {
     content: '';
     position: fixed;
@@ -43,178 +71,239 @@
     background: repeating-linear-gradient(
       0deg,
       transparent 0px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.2) 2px,
-      rgba(0, 0, 0, 0.2) 3px
+      transparent 3px,
+      rgba(0, 0, 0, 0.12) 3px,
+      rgba(0, 0, 0, 0.12) 4px
     );
     pointer-events: none;
     z-index: 9999;
   }
 
-  /* Thicker icon strokes for pixel feel */
-  svg { stroke-width: 2.5px; }
+  /* All SVG icons: consistent stroke weight */
+  svg { stroke-width: 2px; }
 
-  /* Native selects and textareas inherit pixel font */
-  select, textarea, input {
-    font-family: 'Press Start 2P', monospace;
-  }
+  /* Inputs, selects, textareas inherit Space Mono by default */
+  select, textarea, input { font-family: 'Space Mono', monospace; }
 }
 
-/* ── Component classes ─────────────────────────────────────────────────────── */
+/* ── Component classes ──────────────────────────────────────────────────────── */
 
 @layer components {
-  .field {
-    width: 100%;
-    background-color: #0f0f0f;
-    border: 2px solid #2a2a2a;
-    color: #00ff88;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 8px;
-    line-height: 2;
-    padding: 0.6rem 0.75rem;
-    outline: none;
+
+  /* ── Card ─────────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    margin-bottom: 1rem;
   }
-  .field::placeholder { color: #333; }
-  .field:focus {
-    border-color: #39FF14;
-    box-shadow: inset 0 0 0 1px #39FF14;
+  /* Featured / highlighted card: high glow */
+  .card-featured {
+    border-color: var(--green);
+    box-shadow: var(--glow-high);
+  }
+  /* Low-glow variant */
+  .card-glow {
+    box-shadow: var(--glow-low);
   }
 
+  /* ── Section label ────────────────────────────────────────────────────── */
+  .section-label {
+    display: block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── Chip / run-type tag ──────────────────────────────────────────────── */
+  /* Base chip — border uses currentColor so inline style={{ color }} drives it */
+  .chip {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border: 1px solid currentColor;
+    background: transparent;
+    line-height: 1.6;
+    white-space: nowrap;
+  }
+  /* Semantic chip variants (use these when color is known at render time) */
+  .chip-easy    { color: var(--green);      border-color: var(--green); }
+  .chip-long    { color: var(--purple);     border-color: var(--purple); }
+  .chip-cross   { color: var(--blue);       border-color: var(--blue); }
+  .chip-tempo   { color: var(--red);        border-color: var(--red); }
+  .chip-rest    { color: var(--text-muted); border-color: var(--text-muted); }
+  .chip-race    { color: var(--yellow);     border-color: var(--yellow); }
+
+  /* ── Input field ──────────────────────────────────────────────────────── */
+  .field {
+    width: 100%;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    line-height: 1.6;
+    padding: 0.55rem 0.75rem;
+    outline: none;
+  }
+  .field::placeholder { color: var(--text-muted); opacity: 0.6; }
+  .field:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 4px rgba(124, 255, 158, 0.3);
+  }
+
+  /* ── Primary button ───────────────────────────────────────────────────── */
   .btn {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
     padding: 0.5rem 1rem;
-    background-color: #39FF14;
-    color: #0c0c0c;
-    font-family: 'Press Start 2P', monospace;
+    background: var(--green);
+    color: var(--bg-primary);
+    font-family: 'Space Mono', monospace;
     font-size: 8px;
     font-weight: 700;
-    border: 2px solid #25aa00;
-    box-shadow: 3px 3px 0px #1a6600;
-    cursor: pointer;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    transition: none !important;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--green);
+    box-shadow: var(--glow-low);
+    cursor: pointer;
     user-select: none;
+    transition: none !important;
   }
   .btn:hover:not(:disabled) {
-    background-color: #00ff88;
-    box-shadow: 1px 1px 0px #1a6600;
-    transform: translate(2px, 2px);
+    background: #a0ffbe;
+    box-shadow: var(--glow-mid);
   }
   .btn:active:not(:disabled) {
     box-shadow: none;
-    transform: translate(3px, 3px);
+    filter: brightness(0.9);
   }
-  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0px #1a6600; }
+  .btn:disabled {
+    background: var(--bg-nested);
+    color: var(--text-muted);
+    border-color: var(--border);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
 
+  /* ── Ghost / secondary button ─────────────────────────────────────────── */
   .btn-ghost {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
     padding: 0.5rem 1rem;
-    background-color: transparent;
-    color: #666;
-    font-family: 'Press Start 2P', monospace;
+    background: transparent;
+    color: var(--green);
+    font-family: 'Space Mono', monospace;
     font-size: 8px;
-    border: 2px solid #2a2a2a;
-    box-shadow: 3px 3px 0px #111;
-    cursor: pointer;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    transition: none !important;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--green);
+    cursor: pointer;
     user-select: none;
+    transition: none !important;
   }
   .btn-ghost:hover {
-    color: #fff;
-    border-color: #555;
-    box-shadow: 1px 1px 0px #111;
-    transform: translate(2px, 2px);
+    background: rgba(124, 255, 158, 0.08);
+    box-shadow: var(--glow-low);
   }
-  .btn-ghost:active {
-    box-shadow: none;
-    transform: translate(3px, 3px);
-  }
+  .btn-ghost:active { box-shadow: none; }
 
+  /* ── Icon button ──────────────────────────────────────────────────────── */
   .btn-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    background-color: #111;
-    border: 2px solid #2a2a2a;
-    box-shadow: 2px 2px 0px #000;
-    color: #666;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
     cursor: pointer;
     transition: none !important;
+    flex-shrink: 0;
   }
-  .btn-icon:hover { color: #fff; border-color: #555; }
-
-  .card {
-    background-color: #0f0f0f;
-    border: 2px solid #39FF14;
-    box-shadow: 4px 4px 0px rgba(57, 255, 20, 0.25);
-    padding: 1rem;
-    margin-bottom: 1rem;
+  .btn-icon:hover {
+    color: var(--green);
+    border-color: var(--green);
   }
-
-  .section-label {
-    display: block;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 8px;
-    font-weight: 600;
-    color: #39FF14;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    margin-bottom: 0.75rem;
+  .btn-icon:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 }
 
-/* ── Global overrides ──────────────────────────────────────────────────────── */
+/* ── Global overrides ───────────────────────────────────────────────────────── */
 
-/* Make sure every element uses the pixel font */
-*, *::before, *::after {
-  font-family: 'Press Start 2P', monospace;
-}
+/* Space Mono everywhere by default; display font applied via .font-display */
+*, *::before, *::after { font-family: 'Space Mono', monospace; }
 
-/* ── Inline metric cards (bg-slate-800 rounded-xl pattern) ─────────────────
-   These cards aren't .card but still need the pixel treatment.          */
+/* Press Start 2P for display elements */
+.font-display,
+h1, h2, h3 { font-family: 'Press Start 2P', monospace; }
+
+/* Section labels and stat values always display font */
+.section-label { font-family: 'Press Start 2P', monospace; }
+
+/* ── Tailwind text-size adjustments (Space Mono runs slightly larger) ─────── */
+.text-3xl { font-size: 1.6rem  !important; line-height: 1.5 !important; }
+.text-2xl { font-size: 1.25rem !important; line-height: 1.6 !important; }
+.text-xl  { font-size: 1rem   !important; line-height: 1.7 !important; }
+.text-lg  { font-size: 0.9rem  !important; line-height: 1.7 !important; }
+.text-sm  { font-size: 0.75rem !important; line-height: 1.8 !important; }
+.text-xs  { font-size: 0.65rem !important; line-height: 1.8 !important; }
+
+/* ── Inline metric cards ──────────────────────────────────────────────────── */
+/* Target the bg-slate-800 rounded-xl pattern used in PlanTab/DashboardTab */
 div.rounded-xl,
 div.rounded-lg {
-  border: 2px solid rgba(57, 255, 20, 0.3) !important;
-  box-shadow: 3px 3px 0px rgba(57, 255, 20, 0.12) !important;
+  border: 1px solid var(--border) !important;
 }
 
-/* ── Pill/badge spans that use rounded-full → become square chips ─────────
-   The border-radius override already squares them; add a subtle border.  */
-span.rounded-full {
-  border: 1px solid currentColor !important;
-  opacity: 0.9;
-}
-
-/* ── Tailwind text-size scale adjustments for pixel font ───────────────── */
-.text-3xl { font-size: 1.8rem  !important; line-height: 1.5 !important; }
-.text-2xl { font-size: 1.4rem  !important; line-height: 1.6 !important; }
-.text-xl  { font-size: 1.1rem  !important; line-height: 1.7 !important; }
-.text-lg  { font-size: 0.95rem !important; line-height: 1.7 !important; }
-.text-sm  { font-size: 0.8rem  !important; line-height: 1.9 !important; }
-.text-xs  { font-size: 0.65rem !important; line-height: 1.9 !important; }
-
-/* ── Large metric values: highlight in neon green ─────────────────────── */
+/* ── Large stat values → display font + green ─────────────────────────────── */
 .text-2xl.text-white,
 .text-3xl.text-white {
-  color: #39FF14 !important;
+  font-family: 'Press Start 2P', monospace !important;
+  color: var(--green) !important;
 }
 
-/* ── Recharts: kill all internal animations/transitions ────────────────── */
+/* ── Run type legend dots → use token colors ──────────────────────────────── */
+.legend-dot-easy   { background-color: var(--green); }
+.legend-dot-long   { background-color: var(--purple); }
+.legend-dot-cross  { background-color: var(--blue); }
+.legend-dot-tempo  { background-color: var(--red); }
+
+/* ── Recharts ──────────────────────────────────────────────────────────────── */
 .recharts-rectangle,
 .recharts-curve,
 .recharts-sector {
   transition: none !important;
   animation: none !important;
 }
-
-/* Tooltip dark background */
 .recharts-tooltip-wrapper { filter: none; }
+/* Dotted grid lines */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke-dasharray: 2 4 !important;
+  stroke: var(--border) !important;
+}
+
+/* ── Today glow (WeekGrid) ─────────────────────────────────────────────────── */
+.today-cell {
+  border-color: var(--green) !important;
+  box-shadow: var(--glow-mid) !important;
+  background-color: rgba(124, 255, 158, 0.06) !important;
+}
+
+/* ── Run log row alternating backgrounds ──────────────────────────────────── */
+.log-row-even { background: var(--bg-nested); }
+.log-row-odd  { background: transparent; }
