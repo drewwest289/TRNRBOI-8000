@@ -217,6 +217,7 @@ const CORS_ORIGINS = process.env.CORS_ORIGINS
       'http://127.0.0.1:5173',
       'https://trainer-app-v2.pages.dev',
       'https://trnrboi8000.pages.dev',
+      'https://trnrboi-8000.pages.dev',
     ];
 
 const app = express();
