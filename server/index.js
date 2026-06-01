@@ -340,6 +340,26 @@ app.get('/api/strava/activities', async (req, res) => {
   }
 });
 
+// GET /api/strava/activities/all — paginates GET /athlete/activities up to 500
+// activities for the dashboard. MUST stay above /:id to avoid route shadowing.
+app.get('/api/strava/activities/all', async (req, res) => {
+  try {
+    const all = [];
+    let page = 1;
+    while (all.length < 500) {
+      const batch = await stravaGet('/athlete/activities', { per_page: 200, page });
+      if (!batch.length) break;
+      all.push(...batch);
+      if (batch.length < 200) break;
+      page++;
+    }
+    res.json(all);
+  } catch (err) {
+    console.error('[strava]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // GET /api/strava/activities/:id — full detail including best efforts
 app.get('/api/strava/activities/:id', async (req, res) => {
   try {
@@ -361,26 +381,6 @@ app.get('/api/strava/activities/:id/streams', async (req, res) => {
       key_by_type: true,
     });
     res.json(data);
-  } catch (err) {
-    console.error('[strava]', err.message);
-    res.status(502).json({ error: err.message });
-  }
-});
-
-// GET /api/strava/activities/all — paginates up to 500 activities for dashboard
-// Must be registered before /api/strava/activities/:id to avoid route shadowing.
-app.get('/api/strava/activities/all', async (req, res) => {
-  try {
-    const all = [];
-    let page = 1;
-    while (all.length < 500) {
-      const batch = await stravaGet('/athlete/activities', { per_page: 100, page });
-      if (!batch.length) break;
-      all.push(...batch);
-      if (batch.length < 100) break;
-      page++;
-    }
-    res.json(all);
   } catch (err) {
     console.error('[strava]', err.message);
     res.status(502).json({ error: err.message });
