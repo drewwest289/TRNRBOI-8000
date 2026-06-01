@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Nav from './components/Nav';
+import DashboardTab from './components/tabs/DashboardTab';
 import PlanTab from './components/tabs/PlanTab';
 import LogTab from './components/tabs/LogTab';
 import PaceTab from './components/tabs/PaceTab';
@@ -15,7 +16,7 @@ function RaceCountdown({ days }) {
 }
 
 export default function App() {
-  const [tab, setTab] = useState('plan');
+  const [tab, setTab] = useState('dashboard');
   // Single source of truth for training dates — passed down to PlanTab so
   // the race countdown here and the week calculation in the plan stay in sync.
   const plan = useTrainingPlan();
@@ -42,11 +43,12 @@ export default function App() {
         <Nav active={tab} onChange={setTab} />
 
         <main>
-          {tab === 'plan'    && <PlanTab plan={plan} />}
-          {tab === 'log'     && <LogTab />}
-          {tab === 'pace'    && <PaceTab />}
-          {tab === 'team'    && <TeamTab />}
-          {tab === 'history' && <HistoryTab />}
+          {tab === 'dashboard' && <DashboardTab />}
+          {tab === 'plan'      && <PlanTab plan={plan} />}
+          {tab === 'log'       && <LogTab />}
+          {tab === 'pace'      && <PaceTab />}
+          {tab === 'team'      && <TeamTab />}
+          {tab === 'history'   && <HistoryTab />}
         </main>
       </div>
     </div>
