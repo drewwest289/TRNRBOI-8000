@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp, Activity } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp, Activity, Eye, EyeOff } from 'lucide-react';
 import {
   ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
@@ -262,13 +262,33 @@ function ActivityRow({ activity, checked, onToggle, onDismiss, disabled }) {
 // lost after each deploy. Re-run GET /auth/strava after redeploying until
 // persistent token storage is added.
 
+const COLLAPSED_KEY     = 'strava-activities-collapsed';
+const SHOW_IMPORTED_KEY = 'strava-activities-show-imported';
+
 export function StravaActivitiesCard({ defaultUser }) {
-  const [phase,      setPhase]      = useState('loading'); // loading | ready | importing | done | error | disconnected
-  const [activities, setActivities] = useState([]);
-  const [selected,   setSelected]   = useState(new Set());
-  const [dismissed,  setDismissed]  = useState(new Set()); // stravaIds of "in log" rows the user has hidden
-  const [result,     setResult]     = useState(null);
-  const [errMsg,     setErrMsg]     = useState('');
+  const [phase,        setPhase]        = useState('loading'); // loading | ready | importing | done | error | disconnected
+  const [activities,   setActivities]   = useState([]);
+  const [selected,     setSelected]     = useState(new Set());
+  const [dismissed,    setDismissed]    = useState(new Set()); // stravaIds individually hidden via × button
+  const [result,       setResult]       = useState(null);
+  const [errMsg,       setErrMsg]       = useState('');
+  // Persist collapsed + showImported to localStorage so they survive reload.
+  const [collapsed,    setCollapsed]    = useState(() => localStorage.getItem(COLLAPSED_KEY) === 'true');
+  const [showImported, setShowImported] = useState(() => localStorage.getItem(SHOW_IMPORTED_KEY) === 'true');
+
+  function toggleCollapsed() {
+    setCollapsed(c => {
+      localStorage.setItem(COLLAPSED_KEY, String(!c));
+      return !c;
+    });
+  }
+
+  function toggleShowImported() {
+    setShowImported(s => {
+      localStorage.setItem(SHOW_IMPORTED_KEY, String(!s));
+      return !s;
+    });
+  }
 
   const load = useCallback(async () => {
     setPhase('loading');
@@ -335,115 +355,166 @@ export function StravaActivitiesCard({ defaultUser }) {
     }
   }
 
-  const visibleActivities = activities.filter(a => !dismissed.has(a.stravaId));
-  const selectedCount     = selected.size;
-  const hasNew            = visibleActivities.some(a => a._status === 'new');
+  // Activities hidden by the global "imported" filter (separate from individually dismissed)
+  const importedCount     = activities.filter(a => a._status === 'duplicate').length;
+  const visibleActivities = activities.filter(a =>
+    !dismissed.has(a.stravaId) && (showImported || a._status !== 'duplicate')
+  );
+  const selectedCount = selected.size;
+  const hasNew        = visibleActivities.some(a => a._status === 'new');
 
   return (
     <div className="card">
+      {/* ── Header row — always visible, clicking title toggles collapse ── */}
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
+        <button
+          className="flex items-center gap-2 flex-1 text-left"
+          onClick={toggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand Strava activities' : 'Collapse Strava activities'}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
           <Activity size={16} className="text-orange-400" />
           <span className="section-label mb-0">Strava — recent activities</span>
-        </div>
-        {(phase === 'ready' || phase === 'done' || phase === 'error') && (
-          <button className="btn-ghost text-xs" onClick={load}>
-            <RefreshCw size={12} /> Refresh
-          </button>
-        )}
-        {phase === 'loading' && (
-          <span className="text-xs text-slate-500 flex items-center gap-1.5">
-            <RefreshCw size={12} className="animate-spin" /> Loading…
-          </span>
+          {collapsed
+            ? <ChevronDown size={13} className="text-slate-500 ml-1" />
+            : <ChevronUp   size={13} className="text-slate-500 ml-1" />
+          }
+        </button>
+
+        {/* Right-side controls — only when not collapsed */}
+        {!collapsed && (
+          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            {/* Show/hide imported toggle */}
+            {importedCount > 0 && (phase === 'ready' || phase === 'done') && (
+              <button
+                className="btn-icon"
+                onClick={toggleShowImported}
+                title={showImported ? 'Hide imported activities' : `Show ${importedCount} imported`}
+                aria-label={showImported ? 'Hide imported' : 'Show imported'}
+              >
+                {showImported ? <Eye size={13} /> : <EyeOff size={13} />}
+              </button>
+            )}
+            {(phase === 'ready' || phase === 'done' || phase === 'error') && (
+              <button className="btn-ghost text-xs" onClick={load}>
+                <RefreshCw size={12} /> Refresh
+              </button>
+            )}
+            {phase === 'loading' && (
+              <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                <RefreshCw size={12} className="animate-spin" /> Loading…
+              </span>
+            )}
+          </div>
         )}
       </div>
 
-      {phase === 'disconnected' && (
-        <p className="text-xs text-slate-500">
-          Strava not connected.{' '}
-          <a
-            href="/auth/strava"
-            className="text-orange-400 hover:text-orange-300 underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Connect Strava
-          </a>{' '}
-          to pull your activities.
-        </p>
-      )}
-
-      {phase === 'error' && (
-        <p className="text-xs text-red-400">{errMsg}</p>
-      )}
-
-      {phase === 'ready' && activities.length === 0 && (
-        <p className="text-xs text-slate-500">No recent activities found on Strava.</p>
-      )}
-
-      {phase === 'ready' && activities.length > 0 && (
+      {/* ── Body — hidden when collapsed ── */}
+      {!collapsed && (
         <>
-          {/* Toolbar: selection controls + import button */}
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <button className="btn" onClick={doImport} disabled={selectedCount === 0}>
-              Import {selectedCount > 0 ? selectedCount : ''}{selectedCount !== 1 ? ' activities' : ' activity'}
-            </button>
-            <button className="btn-ghost text-xs" onClick={selectAll}>Select all</button>
-            <button className="btn-ghost text-xs" onClick={deselectAll}>Deselect all</button>
-            {hasNew && (
-              <button className="btn-ghost text-xs" onClick={selectNew}>New only</button>
-            )}
-          </div>
-
-          {/* Activity list — dismissed rows are hidden, indices unchanged for selection */}
-          <div>
-            {activities.map((a, i) => {
-              if (dismissed.has(a.stravaId)) return null;
-              return (
-                <ActivityRow
-                  key={a.stravaId ?? i}
-                  activity={a}
-                  checked={selected.has(i)}
-                  onToggle={() => toggle(i)}
-                  onDismiss={a._status === 'duplicate' ? () => dismiss(a.stravaId, i) : null}
-                  disabled={phase !== 'ready'}
-                />
-              );
-            })}
-          </div>
-
-          {dismissed.size > 0 && (
-            <p className="text-xs text-slate-600 mt-2">
-              {dismissed.size} {dismissed.size === 1 ? 'activity' : 'activities'} hidden ·{' '}
-              <button
-                className="underline hover:text-slate-400 transition-colors"
-                onClick={() => setDismissed(new Set())}
+          {phase === 'disconnected' && (
+            <p className="text-xs text-slate-500">
+              Strava not connected.{' '}
+              <a
+                href="/auth/strava"
+                className="text-orange-400 hover:text-orange-300 underline"
+                target="_blank"
+                rel="noreferrer"
               >
-                show all
-              </button>
+                Connect Strava
+              </a>{' '}
+              to pull your activities.
             </p>
+          )}
+
+          {phase === 'error' && (
+            <p className="text-xs text-red-400">{errMsg}</p>
+          )}
+
+          {phase === 'ready' && activities.length === 0 && (
+            <p className="text-xs text-slate-500">No recent activities found on Strava.</p>
+          )}
+
+          {phase === 'ready' && activities.length > 0 && (
+            <>
+              {/* Toolbar: selection controls + import button */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <button className="btn" onClick={doImport} disabled={selectedCount === 0}>
+                  Import {selectedCount > 0 ? selectedCount : ''}{selectedCount !== 1 ? ' activities' : ' activity'}
+                </button>
+                <button className="btn-ghost text-xs" onClick={selectAll}>Select all</button>
+                <button className="btn-ghost text-xs" onClick={deselectAll}>Deselect all</button>
+                {hasNew && (
+                  <button className="btn-ghost text-xs" onClick={selectNew}>New only</button>
+                )}
+              </div>
+
+              {/* Activity list — indices preserved for selection; both filters applied */}
+              <div>
+                {activities.map((a, i) => {
+                  if (dismissed.has(a.stravaId)) return null;
+                  if (!showImported && a._status === 'duplicate') return null;
+                  return (
+                    <ActivityRow
+                      key={a.stravaId ?? i}
+                      activity={a}
+                      checked={selected.has(i)}
+                      onToggle={() => toggle(i)}
+                      onDismiss={a._status === 'duplicate' ? () => dismiss(a.stravaId, i) : null}
+                      disabled={phase !== 'ready'}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Footer: individually-dismissed rows */}
+              {dismissed.size > 0 && (
+                <p className="text-xs text-slate-600 mt-2">
+                  {dismissed.size} {dismissed.size === 1 ? 'activity' : 'activities'} dismissed ·{' '}
+                  <button
+                    className="underline hover:text-slate-400 transition-colors"
+                    onClick={() => setDismissed(new Set())}
+                  >
+                    restore
+                  </button>
+                </p>
+              )}
+              {/* Footer: count hidden by the imported filter */}
+              {!showImported && importedCount > 0 && (
+                <p className="text-xs text-slate-600 mt-2">
+                  {importedCount} already-imported {importedCount === 1 ? 'activity' : 'activities'} hidden ·{' '}
+                  <button
+                    className="underline hover:text-slate-400 transition-colors"
+                    onClick={toggleShowImported}
+                  >
+                    show
+                  </button>
+                </p>
+              )}
+            </>
+          )}
+
+          {phase === 'importing' && (
+            <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-2">
+              <RefreshCw size={12} className="animate-spin" /> Importing…
+            </p>
+          )}
+
+          {phase === 'done' && result && (
+            <div className="mt-3 text-xs space-y-1">
+              {result.imported > 0 && (
+                <p className="text-emerald-400">
+                  ✓ {result.imported} {result.imported !== 1 ? 'activities' : 'activity'} added to log
+                </p>
+              )}
+              {result.dupes > 0 && (
+                <p className="text-slate-500">{result.dupes} already in log (skipped)</p>
+              )}
+              <button className="btn-ghost text-xs mt-1" onClick={load}>Refresh</button>
+            </div>
           )}
         </>
-      )}
-
-      {phase === 'importing' && (
-        <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-2">
-          <RefreshCw size={12} className="animate-spin" /> Importing…
-        </p>
-      )}
-
-      {phase === 'done' && result && (
-        <div className="mt-3 text-xs space-y-1">
-          {result.imported > 0 && (
-            <p className="text-emerald-400">
-              ✓ {result.imported} {result.imported !== 1 ? 'activities' : 'activity'} added to log
-            </p>
-          )}
-          {result.dupes > 0 && (
-            <p className="text-slate-500">{result.dupes} already in log (skipped)</p>
-          )}
-          <button className="btn-ghost text-xs mt-1" onClick={load}>Refresh</button>
-        </div>
       )}
     </div>
   );
