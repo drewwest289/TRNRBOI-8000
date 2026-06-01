@@ -5,17 +5,20 @@ import LogTab from './components/tabs/LogTab';
 import PaceTab from './components/tabs/PaceTab';
 import TeamTab from './components/tabs/TeamTab';
 import HistoryTab from './components/tabs/HistoryTab';
-import { getDaysUntilRace } from './lib/plan';
+import { useTrainingPlan } from './hooks/useTrainingPlan';
 
-function RaceCountdown() {
-  const days = getDaysUntilRace();
-  if (days > 0) return <>{days} days out</>;
-  if (days === 0) return <>Race day! 🏁</>;
+function RaceCountdown({ days }) {
+  if (days === null) return <>Set start date</>;
+  if (days > 0)     return <>{days} days out</>;
+  if (days === 0)   return <>Race day! 🏁</>;
   return <>Plan complete</>;
 }
 
 export default function App() {
   const [tab, setTab] = useState('plan');
+  // Single source of truth for training dates — passed down to PlanTab so
+  // the race countdown here and the week calculation in the plan stay in sync.
+  const plan = useTrainingPlan();
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -31,7 +34,7 @@ export default function App() {
           <div className="text-right">
             <div className="text-xs text-slate-500">Race day</div>
             <div className="text-sm font-semibold text-white mt-0.5">
-              <RaceCountdown />
+              <RaceCountdown days={plan.daysUntilRace} />
             </div>
           </div>
         </header>
@@ -39,7 +42,7 @@ export default function App() {
         <Nav active={tab} onChange={setTab} />
 
         <main>
-          {tab === 'plan'    && <PlanTab />}
+          {tab === 'plan'    && <PlanTab plan={plan} />}
           {tab === 'log'     && <LogTab />}
           {tab === 'pace'    && <PaceTab />}
           {tab === 'team'    && <TeamTab />}
