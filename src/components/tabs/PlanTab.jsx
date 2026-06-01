@@ -5,6 +5,7 @@ import { plan16, getMiles, getActualMilesForWeek } from '../../lib/plan';
 import WeekGrid from '../WeekGrid';
 import MileageChart from '../MileageChart';
 import PlanSettings from '../PlanSettings';
+import DayDrawer from '../DayDrawer';
 
 function MetricCard({ label, value, sub, accent }) {
   return (
@@ -30,6 +31,7 @@ export default function PlanTab({ plan }) {
   // current week, but the user can navigate away with the arrows.
   const [week,         setWeek]         = useState(() => currentWeek ?? 1);
   const [showSettings, setShowSettings] = useState(false);
+  const [drawerDay,    setDrawerDay]    = useState(null); // { dateStr, dayStr, logs }
 
   const runs = useRuns();
 
@@ -167,7 +169,11 @@ export default function PlanTab({ plan }) {
           </div>
         </div>
 
-        <WeekGrid week={week} runs={runs} />
+        <WeekGrid
+          week={week}
+          runs={runs}
+          onDayClick={(dateStr, dayStr, logs) => setDrawerDay({ dateStr, dayStr, logs })}
+        />
 
         {/* Legend */}
         <div className="flex flex-wrap gap-3 mt-4">
@@ -202,6 +208,16 @@ export default function PlanTab({ plan }) {
         </div>
         <MileageChart runs={runs} currentWeek={week} />
       </div>
+
+      {/* Day detail drawer */}
+      {drawerDay && (
+        <DayDrawer
+          dateStr={drawerDay.dateStr}
+          dayStr={drawerDay.dayStr}
+          logs={drawerDay.logs}
+          onClose={() => setDrawerDay(null)}
+        />
+      )}
     </div>
   );
 }
