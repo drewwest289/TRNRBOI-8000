@@ -360,6 +360,26 @@ app.get('/api/strava/activities/:id/streams', async (req, res) => {
   }
 });
 
+// GET /api/strava/activities/all — paginates up to 500 activities for dashboard
+// Must be registered before /api/strava/activities/:id to avoid route shadowing.
+app.get('/api/strava/activities/all', async (req, res) => {
+  try {
+    const all = [];
+    let page = 1;
+    while (all.length < 500) {
+      const batch = await stravaGet('/athlete/activities', { per_page: 100, page });
+      if (!batch.length) break;
+      all.push(...batch);
+      if (batch.length < 100) break;
+      page++;
+    }
+    res.json(all);
+  } catch (err) {
+    console.error('[strava]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // GET /api/strava/athlete — profile, stats, and PR/best-efforts summary
 app.get('/api/strava/athlete', async (req, res) => {
   try {

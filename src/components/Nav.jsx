@@ -1,11 +1,12 @@
-import { Calendar, Activity, Clock, Users, BarChart2 } from 'lucide-react';
+import { Calendar, Activity, Clock, Users, BarChart2, LayoutDashboard } from 'lucide-react';
 
 const TABS = [
-  { id: 'plan',    label: 'Plan',    Icon: Calendar },
-  { id: 'log',     label: 'Log',     Icon: Activity },
-  { id: 'pace',    label: 'Pace',    Icon: Clock },
-  { id: 'team',    label: 'Team',    Icon: Users },
-  { id: 'history', label: 'History', Icon: BarChart2 },
+  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { id: 'plan',      label: 'Plan',      Icon: Calendar },
+  { id: 'log',       label: 'Log',       Icon: Activity },
+  { id: 'pace',      label: 'Pace',      Icon: Clock },
+  { id: 'team',      label: 'Team',      Icon: Users },
+  { id: 'history',   label: 'History',   Icon: BarChart2 },
 ];
 
 export default function Nav({ active, onChange }) {
