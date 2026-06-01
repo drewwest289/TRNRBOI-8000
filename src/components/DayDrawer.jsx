@@ -17,29 +17,35 @@ const PLAN_TO_LOG = {
   interval: 'Intervals', cross: 'Cross-train', race: 'Easy', rest: 'Easy',
 };
 
-/** Format YYYY-MM-DD → "Monday, Jun 2" */
+/** Parse YYYY-MM-DD to a local-midnight Date without UTC timezone shift */
+function parseLocal(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Format YYYY-MM-DD as "Monday, Jun 2" */
 function longDate(str) {
-  return new Date(str + 'T00:00:00').toLocaleDateString('en-US', {
+  return parseLocal(str).toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric',
   });
 }
 
-/** Format YYYY-MM-DD → "Mon Jun 2" (short, for defer picker options) */
+/** Format YYYY-MM-DD as "Mon Jun 2" (for defer picker options) */
 function shortDate(str) {
-  return new Date(str + 'T00:00:00').toLocaleDateString('en-US', {
+  return parseLocal(str).toLocaleDateString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
   });
 }
 
-/** Return all 7 dates for the week containing dateStr, as YYYY-MM-DD strings */
+/** Return all 7 YYYY-MM-DD strings for the week containing dateStr */
 function getWeekDates(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const sun = new Date(d);
-  sun.setDate(d.getDate() - d.getDay());
+  const date = parseLocal(dateStr);
+  const sun  = new Date(date);
+  sun.setDate(date.getDate() - date.getDay());
   return Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(sun);
-    day.setDate(sun.getDate() + i);
-    return localDateStr(day);
+    const d = new Date(sun);
+    d.setDate(sun.getDate() + i);
+    return localDateStr(d);
   });
 }
 
