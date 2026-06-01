@@ -211,7 +211,13 @@ async function stravaGet(path, params = {}) {
 
 const CORS_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
-  : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'];
+  : [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5173',
+      'https://trainer-app-v2.pages.dev',
+      'https://trnrboi8000.pages.dev',
+    ];
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGINS }));
