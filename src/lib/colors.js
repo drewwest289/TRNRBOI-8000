@@ -14,6 +14,7 @@ export const TYPE_COLOR = {
   'Cross-train':'#378ADD',
   'Tempo':      '#BA7517',
   'Intervals':  '#BA7517',
+  'Rest':       '#475569',
 };
 
 export const TYPE_BG = {
