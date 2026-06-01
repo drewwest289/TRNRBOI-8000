@@ -24,7 +24,7 @@ export default function App() {
         <header className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-xl font-semibold text-white tracking-tight">
-              Half Marathon Trainer
+              TRNRBOI 8000
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">16-week plan · intermediate</p>
           </div>
