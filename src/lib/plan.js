@@ -36,6 +36,13 @@ export function getDayMiles(dayStr) {
 }
 
 export function getPlanStart() {
+  // Read the stored start date (written by useTrainingPlan / PlanSettings).
+  const stored = localStorage.getItem('trnr_startDate');
+  if (stored) {
+    const d = new Date(stored + 'T00:00:00');
+    if (!isNaN(d.getTime())) { d.setHours(0, 0, 0, 0); return d; }
+  }
+  // Fallback before setup: anchor to the start of the current week.
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - d.getDay());
@@ -54,6 +61,12 @@ export function getDateForCell(week, dayIdx) {
 }
 
 export function getRaceDate() {
+  const stored = localStorage.getItem('trnr_raceDate');
+  if (stored) {
+    const d = new Date(stored + 'T00:00:00');
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Derive from start date if no explicit race date was set.
   const s = getPlanStart();
   const d = new Date(s);
   d.setDate(s.getDate() + 16 * 7);
