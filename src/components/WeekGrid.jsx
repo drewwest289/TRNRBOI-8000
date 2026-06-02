@@ -21,16 +21,17 @@ function getTodayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function WeekGrid({ week, runs, onDayClick }) {
+export default function WeekGrid({ week, runs, onDayClick, planOverrides = {} }) {
   const weekData = plan16[week - 1];
   const todayStr = getTodayStr();
 
   return (
     <div className="grid grid-cols-7 gap-1.5">
-      {weekData.days.map((dayStr, i) => {
+      {weekData.days.map((baseDayStr, i) => {
+        const dateStr = getDateForCell(week, i);
+        const dayStr  = planOverrides[dateStr] ?? baseDayStr;
         const type    = getDayType(dayStr);
         const planned = getDayMiles(dayStr);
-        const dateStr = getDateForCell(week, i);
         const logs    = getLogsForDate(dateStr, runs);
         const isRest  = type === 'rest';
         const isToday = dateStr === todayStr;

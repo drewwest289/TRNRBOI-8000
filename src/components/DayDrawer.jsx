@@ -11,6 +11,11 @@ import { TYPE_COLOR } from '../lib/colors';
 const RUN_TYPES   = ['Easy', 'Tempo', 'Long run', 'Intervals', 'Cross-train'];
 const CROSS_TYPES = ['Bike', 'Swim', 'Strength', 'Walk', 'Other'];
 
+const LOG_TO_PLAN = {
+  'Easy': 'easy', 'Tempo': 'tempo', 'Long run': 'long',
+  'Intervals': 'interval', 'Cross-train': 'cross',
+};
+
 /** Map plan day type → default log type */
 const PLAN_TO_LOG = {
   easy: 'Easy', tempo: 'Tempo', long: 'Long run',
@@ -259,6 +264,45 @@ function DeferView({ dateStr, dayStr, user, onSave, onCancel }) {
   );
 }
 
+/** Plan a run form — saves an override to db.planOverrides */
+function PlanRunForm({ dateStr, planType, plannedMi, onSave, onCancel }) {
+  const defaultType = RUN_TYPES.find(t => LOG_TO_PLAN[t] === planType) || 'Easy';
+  const [type, setType] = useState(defaultType);
+  const [dist, setDist] = useState(plannedMi ? String(plannedMi) : '');
+  const [err,  setErr]  = useState('');
+
+  function handleSave() {
+    const d = parseFloat(dist);
+    if (isNaN(d) || d <= 0) { setErr('Distance is required.'); return; }
+    const prefix = LOG_TO_PLAN[type] || 'easy';
+    onSave(`${prefix} ${d}`);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-xs text-slate-400 mb-1">Type</label>
+        <select className="field" value={type} onChange={e => setType(e.target.value)}>
+          {RUN_TYPES.map(t => <option key={t}>{t}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs text-slate-400 mb-1">Distance (mi)</label>
+        <input
+          type="number" className="field" placeholder="3.1" step="0.1" min="0"
+          value={dist}
+          onChange={e => { setErr(''); setDist(e.target.value); }}
+        />
+      </div>
+      {err && <p className="text-xs text-red-400">{err}</p>}
+      <div className="flex gap-2 pt-1">
+        <button className="btn" onClick={handleSave}>Save</button>
+        <button className="btn-ghost text-sm" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main DayDrawer ────────────────────────────────────────────────────────────
 
 /**
@@ -316,6 +360,11 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
     onClose();
   }
 
+  async function savePlanOverride(dayStr) {
+    await db.planOverrides.put({ date: dateStr, dayStr });
+    onClose();
+  }
+
   async function handleDefer(targetDate) {
     // Mark original day as rest with a deferred note
     await db.runs.add({
@@ -335,15 +384,16 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
   // ── Header helpers ───────────────────────────────────────────────────────
 
   const viewTitle = {
-    stats:     longDate(dateStr),
-    menu:      longDate(dateStr),
-    'log-run': 'Log a run',
-    'log-cross': 'Log cross-training',
-    defer:     'Defer workout',
-    edit:      'Edit entry',
+    stats:      longDate(dateStr),
+    menu:       longDate(dateStr),
+    'log-run':  'Log a run',
+    'log-cross':'Log cross-training',
+    'plan-run': 'Plan a run',
+    defer:      'Defer workout',
+    edit:       'Edit entry',
   };
 
-  const canGoBack = ['log-run', 'log-cross', 'defer', 'edit'].includes(view);
+  const canGoBack = ['log-run', 'log-cross', 'plan-run', 'defer', 'edit'].includes(view);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -414,7 +464,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
                            transition-colors text-sm font-medium text-white"
                 onClick={() => setView('log-run')}
               >
-                🏃 Log a run
+                Log a run
                 {planType !== 'rest' && plannedMi > 0 && (
                   <span className="text-xs text-slate-400 font-normal ml-2">
                     {plannedMi} mi {planType} planned
@@ -430,7 +480,18 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
                            transition-colors text-sm font-medium text-white"
                 onClick={() => setView('log-cross')}
               >
-                🚴 Log cross-training
+                Log cross-training
+              </button>
+
+              <button
+                className="w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700
+                           transition-colors text-sm font-medium text-slate-300"
+                onClick={() => setView('plan-run')}
+              >
+                Add to schedule
+                {planType !== 'rest' && plannedMi > 0 && (
+                  <span className="text-xs text-slate-400 font-normal ml-2">override plan</span>
+                )}
               </button>
 
               <button
@@ -438,7 +499,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
                            transition-colors text-sm font-medium text-slate-300"
                 onClick={() => markRest()}
               >
-                😴 Mark as rest / skipped
+                Mark as rest / skipped
               </button>
 
               {planType !== 'rest' && (
@@ -447,7 +508,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
                              transition-colors text-sm font-medium text-slate-300"
                   onClick={() => setView('defer')}
                 >
-                  📅 Defer to another day
+                  Defer to another day
                 </button>
               )}
             </div>
@@ -474,6 +535,17 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
               dateStr={dateStr}
               user={defaultUser}
               onSave={addRun}
+              onCancel={() => setView('menu')}
+            />
+          )}
+
+          {/* ── PLAN RUN ── */}
+          {view === 'plan-run' && (
+            <PlanRunForm
+              dateStr={dateStr}
+              planType={planType}
+              plannedMi={plannedMi}
+              onSave={savePlanOverride}
               onCancel={() => setView('menu')}
             />
           )}
