@@ -349,7 +349,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
       onClick={onClose}
     >
       {/* Backdrop */}
@@ -357,14 +357,11 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
 
       {/* Sheet */}
       <div
-        className="relative w-full max-w-3xl bg-slate-900 border-t border-slate-800 rounded-t-2xl
+        className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl
                    max-h-[85vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-slate-700" />
-        </div>
+        <div className="pt-4" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-2 pb-4">
@@ -412,20 +409,21 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
           {/* ── ACTION MENU ── */}
           {view === 'menu' && (
             <div className="space-y-2">
-              {planType !== 'rest' && (
-                <button
-                  className="w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700
-                             transition-colors text-sm font-medium text-white"
-                  onClick={() => setView('log-run')}
-                >
-                  🏃 Log a run
-                  {plannedMi > 0 && (
-                    <span className="text-xs text-slate-400 font-normal ml-2">
-                      {plannedMi} mi {planType} planned
-                    </span>
-                  )}
-                </button>
-              )}
+              <button
+                className="w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700
+                           transition-colors text-sm font-medium text-white"
+                onClick={() => setView('log-run')}
+              >
+                🏃 Log a run
+                {planType !== 'rest' && plannedMi > 0 && (
+                  <span className="text-xs text-slate-400 font-normal ml-2">
+                    {plannedMi} mi {planType} planned
+                  </span>
+                )}
+                {planType === 'rest' && (
+                  <span className="text-xs text-slate-400 font-normal ml-2">rest day</span>
+                )}
+              </button>
 
               <button
                 className="w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700
