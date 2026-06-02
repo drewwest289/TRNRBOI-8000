@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, ChevronDown, Activity, Eye, EyeOff } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp, Activity, Eye, EyeOff } from 'lucide-react';
 import ActivityDetailModal from './ActivityDetailModal';
 import { db } from '../db';
 import { paceStr } from '../lib/pace';
