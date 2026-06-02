@@ -1,18 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp, Activity, Eye, EyeOff } from 'lucide-react';
-import {
-  ComposedChart, Area, Line,
-  XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
-} from 'recharts';
+import { RefreshCw, ChevronDown, Activity, Eye, EyeOff } from 'lucide-react';
+import ActivityDetailModal from './ActivityDetailModal';
 import { db } from '../db';
-import { paceStr, formatPaceTick } from '../lib/pace';
+import { paceStr } from '../lib/pace';
 import { TYPE_COLOR, chipClass, TOKENS } from '../lib/colors';
 import {
   fetchStravaAthlete,
   fetchStravaActivities,
-  fetchStravaStreams,
   normalizeStravaActivity,
-  streamsToChartData,
 } from '../lib/strava';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -43,216 +38,74 @@ async function importToDb(activities, selected, user) {
   return { imported, dupes };
 }
 
-// ── Streams detail chart ──────────────────────────────────────────────────────
-
-const StreamsTooltip = ({ active, payload }) => {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs shadow-xl">
-      <p className="text-slate-400 mb-1.5">{d.t} min</p>
-      {d.pace != null && (
-        <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Pace</span>
-          <span style={{ color: '#7F77DD' }}>{formatPaceTick(d.pace)}/mi</span>
-        </div>
-      )}
-      {d.hr != null && (
-        <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Heart rate</span>
-          <span style={{ color: '#f87171' }}>{d.hr} bpm</span>
-        </div>
-      )}
-    </div>
-  );
-};
-
-function StreamsChart({ activityId }) {
-  const [points, setPoints]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr]         = useState(null);
-
-  useEffect(() => {
-    fetchStravaStreams(activityId)
-      .then(s => setPoints(streamsToChartData(s)))
-      .catch(e => setErr(e.message))
-      .finally(() => setLoading(false));
-  }, [activityId]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-1.5 text-xs text-slate-500 py-3">
-        <RefreshCw size={11} className="animate-spin" /> Loading streams…
-      </div>
-    );
-  }
-  if (err) {
-    return <p className="text-xs text-red-400 py-2">Streams unavailable: {err}</p>;
-  }
-  if (!points?.length) {
-    return <p className="text-xs text-slate-500 py-2">No stream data for this activity.</p>;
-  }
-
-  const hasHR   = points.some(p => p.hr   != null);
-  const hasPace = points.some(p => p.pace != null);
-
-  return (
-    <div className="mt-3">
-      {(hasHR || hasPace) && (
-        <div className="flex items-center gap-3 text-xs mb-2 justify-end">
-          {hasPace && (
-            <span className="flex items-center gap-1.5" style={{ color: TOKENS.blue }}>
-              <span style={{ display: 'inline-block', width: 12, height: 2, background: TOKENS.blue }} />
-              PACE
-            </span>
-          )}
-          {hasHR && (
-            <span className="flex items-center gap-1.5" style={{ color: TOKENS.red }}>
-              <span style={{ display: 'inline-block', width: 12, height: 2, background: TOKENS.red }} />
-              HR
-            </span>
-          )}
-        </div>
-      )}
-      <ResponsiveContainer width="100%" height={180}>
-        <ComposedChart data={points} margin={{ top: 4, right: hasHR ? 8 : 4, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="#1e293b" strokeDasharray="4 4" vertical={false} />
-          <XAxis
-            dataKey="t"
-            tick={{ fill: '#64748b', fontSize: 10 }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={v => `${v}m`}
-            interval="preserveStartEnd"
-          />
-          {hasPace && (
-            <YAxis
-              yAxisId="pace"
-              orientation="left"
-              tick={{ fill: '#64748b', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={formatPaceTick}
-              domain={['auto', 'auto']}
-              reversed
-              width={42}
-            />
-          )}
-          {hasHR && (
-            <YAxis
-              yAxisId="hr"
-              orientation="right"
-              tick={{ fill: TOKENS.red + '99', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              domain={['auto', 'auto']}
-              width={36}
-            />
-          )}
-          <Tooltip content={<StreamsTooltip />} cursor={{ stroke: '#334155', strokeWidth: 1 }} />
-          {hasPace && (
-            <Area
-              yAxisId="pace"
-              type="monotone"
-              dataKey="pace"
-              stroke={TOKENS.blue}
-              strokeWidth={1.5}
-              fill="rgba(77,163,255,0.12)"
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 0 }}
-              connectNulls
-            />
-          )}
-          {hasHR && (
-            <Line
-              yAxisId="hr"
-              type="monotone"
-              dataKey="hr"
-              stroke={TOKENS.red}
-              strokeWidth={1.5}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 0 }}
-              connectNulls
-            />
-          )}
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
 // ── Activity row ──────────────────────────────────────────────────────────────
 
 function ActivityRow({ activity, checked, onToggle, onDismiss, disabled }) {
-  const [expanded, setExpanded] = useState(false);
-  const { name, date, distMi, durMin, hr, type, _status, stravaId } = activity;
+  const [modalOpen, setModalOpen] = useState(false);
+  const { name, date, distMi, durMin, hr, type, _status } = activity;
 
-  const color  = TYPE_COLOR[type] || '#64748b';
   const pace   = distMi && durMin ? paceStr(distMi, durMin) : null;
   const isDupe = _status === 'duplicate';
 
   return (
-    <div className={`rounded-lg border transition-colors mb-1.5 ${
-      isDupe
-        ? 'border-slate-800 opacity-60'
-        : expanded
-        ? 'border-slate-600 bg-slate-800/70'
-        : 'border-slate-800 bg-slate-900 hover:bg-slate-800/50'
-    }`}>
-      <div className="flex items-start gap-3 px-3 py-2.5">
-        <input
-          type="checkbox"
-          className="mt-0.5 accent-emerald-500 cursor-pointer flex-shrink-0"
-          checked={checked}
-          disabled={disabled}
-          onChange={onToggle}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{name}</span>
-            <span className={chipClass(type) + ' flex-shrink-0'}>{type}</span>
-            {isDupe && (
-              <span className="chip flex-shrink-0" style={{ color: TOKENS.yellow, borderColor: TOKENS.yellow }}>
-                in log
-              </span>
+    <>
+      <div className={`rounded-lg border transition-colors mb-1.5 ${
+        isDupe
+          ? 'border-slate-800 opacity-60'
+          : 'border-slate-800 bg-slate-900 hover:bg-slate-800/50'
+      }`}>
+        <div className="flex items-start gap-3 px-3 py-2.5">
+          <input
+            type="checkbox"
+            className="mt-0.5 accent-emerald-500 cursor-pointer flex-shrink-0"
+            checked={checked}
+            disabled={disabled}
+            onChange={onToggle}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{name}</span>
+              <span className={chipClass(type) + ' flex-shrink-0'}>{type}</span>
+              {isDupe && (
+                <span className="chip flex-shrink-0" style={{ color: TOKENS.yellow, borderColor: TOKENS.yellow }}>
+                  in log
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              {date}
+              {distMi  ? ` · ${distMi.toFixed(2)} mi`  : ''}
+              {pace    ? ` · ${pace}/mi`                : ''}
+              {durMin  ? ` · ${durMin} min`             : ''}
+              {hr      ? ` · ${hr} bpm`                 : ''}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {isDupe && onDismiss && (
+              <button
+                className="text-slate-600 hover:text-slate-300 transition-colors px-1"
+                onClick={onDismiss}
+                title="Mark as recorded — remove from list"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
             )}
-          </div>
-          <div className="text-xs text-slate-500 mt-0.5">
-            {date}
-            {distMi  ? ` · ${distMi.toFixed(2)} mi`  : ''}
-            {pace    ? ` · ${pace}/mi`                : ''}
-            {durMin  ? ` · ${durMin} min`             : ''}
-            {hr      ? ` · ${hr} bpm`                 : ''}
-          </div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Dismiss button — only on "in log" rows */}
-          {isDupe && onDismiss && (
             <button
-              className="text-slate-600 hover:text-slate-300 transition-colors px-1"
-              onClick={onDismiss}
-              title="Mark as recorded — remove from list"
-              aria-label="Dismiss"
+              className="text-slate-500 hover:text-slate-300 transition-colors"
+              onClick={() => setModalOpen(true)}
+              aria-label="View activity details"
             >
-              ×
+              <ChevronDown size={14} />
             </button>
-          )}
-          <button
-            className="text-slate-500 hover:text-slate-300 transition-colors"
-            onClick={() => setExpanded(e => !e)}
-            aria-label={expanded ? 'Collapse' : 'Expand'}
-          >
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          </div>
         </div>
       </div>
 
-      {expanded && (
-        <div className="px-3 pb-3">
-          <StreamsChart activityId={stravaId} />
-        </div>
+      {modalOpen && (
+        <ActivityDetailModal activity={activity} onClose={() => setModalOpen(false)} />
       )}
-    </div>
+    </>
   );
 }
 
