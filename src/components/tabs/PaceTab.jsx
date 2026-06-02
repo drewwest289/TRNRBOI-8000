@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, PixelIcon } from '../../icons/PixelIcons';
 import {
   ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
@@ -67,6 +67,14 @@ const TYPE_COLOR_MAP = {
   'Tempo':    TOKENS.red,
   'Race':     TOKENS.yellow,
   'Intervals':TOKENS.red,
+};
+
+const TYPE_GLYPH_MAP = {
+  'Easy':     'runner',
+  'Long run': 'road',
+  'Tempo':    'bolt',
+  'Intervals':'bolt',
+  'Race':     'trophy',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -406,7 +414,12 @@ function PRsAndRecents({ runs }) {
                     borderBottom: i < recentRuns.length - 1 ? '1px solid var(--border)' : 'none',
                   }}
                 >
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                  <PixelIcon
+                    name={TYPE_GLYPH_MAP[type] || 'runner'}
+                    size={12}
+                    color={color}
+                    className="flex-shrink-0"
+                  />
                   <span className="flex-1 text-sm truncate" style={{ color: 'var(--text-primary)' }}>{a.name}</span>
                   <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{date}</span>
                   <span className={chipClass(type) + ' flex-shrink-0 hidden sm:inline-block'}>{type}</span>

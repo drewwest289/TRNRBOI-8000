@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { UserPlus, Trash2 } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
+import { Trash2 } from '../../icons/PixelIcons';
 import { db } from '../../db';
 import { useRunners } from '../../hooks/useRunners';
 import { useRuns } from '../../hooks/useRuns';

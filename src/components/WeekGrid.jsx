@@ -1,14 +1,16 @@
 import { DAY_NAMES, getDayType, getDayMiles, getDateForCell, getLogsForDate, plan16 } from '../lib/plan';
 import { TYPE_COLOR, TYPE_BG, TOKENS } from '../lib/colors';
+import { PixelIcon } from '../icons/PixelIcons';
 
-const TYPE_LABEL = {
-  easy:     'EASY',
-  long:     'LONG',
-  race:     'RACE!',
-  cross:    'CROSS',
-  tempo:    'TEMPO',
-  interval: 'INTV',
-  rest:     'REST',
+/** Pixel icon name + fallback text label for each plan day type */
+const TYPE_GLYPH = {
+  easy:     { icon: 'runner', label: 'EASY'  },
+  long:     { icon: 'road',   label: 'LONG'  },
+  tempo:    { icon: 'bolt',   label: 'TEMPO' },
+  interval: { icon: 'bolt',   label: 'INTV'  },
+  cross:    { icon: 'bike',   label: 'CROSS' },
+  rest:     { icon: 'bed',    label: 'REST'  },
+  race:     { icon: null,     label: 'RACE!' },
 };
 
 function shortDate(dateStr) {
@@ -82,12 +84,19 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {} })
             >
               {shortDate(dateStr)}
             </div>
-            {/* Plan type label */}
-            <div
-              className="text-xs font-bold mb-1"
-              style={{ color: labelColor }}
-            >
-              {TYPE_LABEL[type] || type.toUpperCase()}
+            {/* Plan type glyph */}
+            <div className="flex justify-center mb-1">
+              {TYPE_GLYPH[type]?.icon ? (
+                <PixelIcon
+                  name={TYPE_GLYPH[type].icon}
+                  size={10}
+                  color={labelColor}
+                />
+              ) : (
+                <span className="text-xs font-bold" style={{ color: labelColor }}>
+                  {TYPE_GLYPH[type]?.label || type.toUpperCase()}
+                </span>
+              )}
             </div>
             {/* Planned miles */}
             <div className="text-xs" style={{ color: TOKENS.textPrimary }}>

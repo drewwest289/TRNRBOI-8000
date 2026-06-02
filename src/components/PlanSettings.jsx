@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CalendarDays, X } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
+import { X } from '../icons/PixelIcons';
 
 function addWeeks(dateStr, n) {
   if (!dateStr) return '';

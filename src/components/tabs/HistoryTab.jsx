@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { RefreshCw, Watch, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { Watch, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw } from '../../icons/PixelIcons';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   ComposedChart, Area,

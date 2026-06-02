@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRNRBOI 8000 — Pixel Icon Set</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary:  #0B0F1A;
+    --bg-panel:    #111827;
+    --bg-nested:   #1A2232;
+    --border:      #283442;
+    --text-primary:#E6F5E6;
+    --text-muted:  #8AA0B2;
+    --green:       #7CFF9E;
+    --blue:        #4DA3FF;
+    --purple:      #B36BFF;
+    --red:         #FF5C5C;
+    --yellow:      #FFD44D;
+    --grid-line:   #1D2433;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Space Mono', monospace;
+    background-color: var(--bg-primary);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--text-primary);
+    padding: 40px 32px 80px;
+    min-height: 100vh;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,0.12) 3px 4px);
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  /* ── Header ── */
+  header { margin-bottom: 40px; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.18em; color: var(--text-muted);
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 40px; font-weight: 700; color: var(--green); letter-spacing: 0.02em;
+    text-transform: uppercase; line-height: 1; text-shadow: 0 0 16px rgba(124,255,158,0.5);
+  }
+  .sub { color: var(--text-muted); font-size: 13px; margin-top: 12px; max-width: 640px; line-height: 1.7; }
+
+  /* ── Controls bar ── */
+  .controls {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin: 28px 0 8px; padding: 14px 16px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+  }
+  .controls .clabel { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
+  .seg { display: flex; gap: 0; border: 1px solid var(--green); }
+  .seg button {
+    font-family: inherit; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    background: transparent; color: var(--text-muted); border: none; padding: 8px 14px; cursor: pointer;
+  }
+  .seg button.on { background: var(--green); color: var(--bg-primary); }
+  .spacer { flex: 1; }
+  .toggle {
+    font-family: inherit; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    background: transparent; color: var(--green); border: 1px solid var(--green); padding: 8px 14px; cursor: pointer;
+  }
+  .toggle.off { color: var(--text-muted); border-color: var(--border); }
+
+  /* ── Sections ── */
+  .section { margin-top: 36px; }
+  .section-label {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--green); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 4px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .section-label span { color: var(--text-muted); font-weight: 400; font-size: 10px; letter-spacing: 0.08em; }
+
+  /* ── Icon grid ── */
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  @media (max-width: 760px){ .grid { grid-template-columns: repeat(2, 1fr); } }
+  .cell {
+    background: var(--bg-panel); padding: 22px 12px 16px; display: flex; flex-direction: column;
+    align-items: center; gap: 14px; transition: background 0.08s steps(1);
+  }
+  .cell:hover { background: var(--bg-nested); }
+  .icon-box { width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; }
+  .meta { text-align: center; }
+  .meta .name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-primary); }
+  .meta .repl { font-size: 9px; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.04em; }
+
+  /* ── Run-type swatch row ── */
+  .typerow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  @media (max-width: 760px){ .typerow { grid-template-columns: repeat(2, 1fr); } }
+  .typecell { background: var(--bg-panel); padding: 20px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .typecell .chip {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 3px 8px; border: 1px solid; 
+  }
+
+  /* ── In-context demo strip ── */
+  .demo { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px){ .demo { grid-template-columns: 1fr; } }
+  .demo-card { background: var(--bg-panel); border: 1px solid var(--border); padding: 0; }
+  .demo-card h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .demo-body { padding: 14px; }
+
+  /* nav tabs demo */
+  .navdemo { display: flex; border-bottom: 1px solid var(--green); }
+  .navtab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px;
+    font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 2px solid transparent; }
+  .navtab.active { background: var(--green); color: var(--bg-primary); border-bottom-color: var(--green); }
+
+  /* week grid demo */
+  .weekdemo { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .daycell { border: 1px solid var(--border); padding: 8px 4px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .daycell .dn { font-size: 8px; color: var(--text-muted); }
+  .daycell .dl { font-size: 8px; font-weight: 700; text-transform: uppercase; }
+
+  /* log rows demo */
+  .logrow { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 10px; }
+  .logrow:last-child { border-bottom: none; }
+  .logrow .date { color: var(--text-muted); width: 42px; }
+  .logrow .lchip { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border: 1px solid; letter-spacing: 0.06em; }
+  .logrow .dist { margin-left: auto; color: var(--text-primary); }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 11px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">TRNRBOI 8000 · Iconography</div>
+    <h1>Pixel Icon Set</h1>
+    <p class="sub">22 glyphs, each hand-placed on a 16×16 grid to match Section 10 of the design system. Bold &amp; blocky, Game&nbsp;Boy green base with semantic color variants for run types. Drop-in replacements for the lucide-react icons currently in the app.</p>
+  </header>
+
+  <div class="controls">
+    <span class="clabel">Zoom</span>
+    <div class="seg" id="zoomSeg">
+      <button data-z="3">3×</button>
+      <button data-z="4" class="on">4×</button>
+      <button data-z="5">5×</button>
+    </div>
+    <span class="spacer"></span>
+    <button class="toggle" id="glowBtn">CRT Glow · ON</button>
+    <button class="toggle off" id="gridBtn">Pixel Grid · OFF</button>
+  </div>
+
+  <div id="sections"></div>
+
+  <!-- ── In-context demos ── -->
+  <div class="section">
+    <div class="section-label">In context <span>how they read inside the app</span></div>
+  </div>
+  <div class="demo">
+    <div class="demo-card">
+      <h3>Navigation tabs</h3>
+      <div class="demo-body" style="padding:0">
+        <div class="navdemo" id="navDemo"></div>
+      </div>
+    </div>
+    <div class="demo-card">
+      <h3>Run log rows</h3>
+      <div class="demo-body" id="logDemo"></div>
+    </div>
+  </div>
+  <div class="demo" style="grid-template-columns:1fr">
+    <div class="demo-card">
+      <h3>Week grid</h3>
+      <div class="demo-body"><div class="weekdemo" id="weekDemo"></div></div>
+    </div>
+  </div>
+
+  <footer>
+    <span>16×16 px · pixel-perfect · stroke-free</span>
+    <span>Run smart. Stay consistent. Become legendary.</span>
+  </footer>
+</div>
+
+<script src="icon-data.js"></script>
+<script>
+  const ICONS = window.TRNR_ICONS;
+  const META  = window.TRNR_ICON_META;
+  const COL   = window.TRNR_COLORS;
+
+  let zoom = 4;
+  let glow = true;
+  let showGrid = false;
+
+  // Render one icon as an SVG of rects
+  function svgFor(key, color, px) {
+    const m = ICONS[key];
+    const size = 16 * px;
+    let rects = '';
+    for (let y = 0; y < 16; y++) {
+      const row = m[y] || '';
+      for (let x = 0; x < 16; x++) {
+        if (row[x] && row[x] !== '.') {
+          rects += `<rect x="${x*px}" y="${y*px}" width="${px}" height="${px}"/>`;
+        }
+      }
+    }
+    let gridOverlay = '';
+    if (showGrid) {
+      for (let i = 1; i < 16; i++) {
+        gridOverlay += `<line x1="${i*px}" y1="0" x2="${i*px}" y2="${size}"/>`;
+        gridOverlay += `<line x1="0" y1="${i*px}" x2="${size}" y2="${i*px}"/>`;
+      }
+    }
+    const filter = glow ? `filter="drop-shadow(0 0 ${Math.max(2,px)}px ${color}aa)"` : '';
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+      ${showGrid ? `<g stroke="${COL.muted}" stroke-width="0.5" opacity="0.25">${gridOverlay}</g>` : ''}
+      <g fill="${color}" ${filter}>${rects}</g>
+    </svg>`;
+  }
+
+  // small inline icon (for demos) — fixed pixel size
+  function inlineIcon(key, color, displaySize) {
+    const px = displaySize / 16;
+    return svgFor(key, color, px);
+  }
+
+  const CATS = ["Core", "Run types", "Navigation", "Utility"];
+  const CAT_NOTE = {
+    "Core": "Section 10 of the design system — the canonical ten",
+    "Run types": "Tinted to their meaning · green / red / purple / blue / muted",
+    "Navigation": "Tab bar & headers",
+    "Utility": "Buttons, rows & actions",
+  };
+
+  function colorFor(key) {
+    return COL[META[key].color] || COL.green;
+  }
+
+  function renderSections() {
+    const px = zoom;
+    const host = document.getElementById('sections');
+    host.innerHTML = '';
+    CATS.forEach(cat => {
+      const keys = Object.keys(ICONS).filter(k => META[k].cat === cat);
+      if (!keys.length) return;
+      const sec = document.createElement('div');
+      sec.className = 'section';
+      sec.innerHTML = `<div class="section-label">${cat} <span>${CAT_NOTE[cat]}</span></div>`;
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      keys.forEach(k => {
+        const meta = META[k];
+        const color = cat === 'Run types' ? colorFor(k) : COL.green;
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.innerHTML = `
+          <div class="icon-box">${svgFor(k, color, px)}</div>
+          <div class="meta">
+            <div class="name">${meta.label}</div>
+            <div class="repl">↺ ${meta.replaces}</div>
+          </div>`;
+        grid.appendChild(cell);
+      });
+      sec.appendChild(grid);
+      host.appendChild(sec);
+    });
+
+    // Run-type color spectrum (the "both" ask — same runner glyph across the palette)
+    renderSpectrum();
+  }
+
+  function renderSpectrum() {
+    const host = document.getElementById('sections');
+    const sec = document.createElement('div');
+    sec.className = 'section';
+    sec.innerHTML = `<div class="section-label">Color system <span>one base glyph, recolored by run type</span></div>`;
+    const row = document.createElement('div');
+    row.className = 'typerow';
+    const map = [
+      ['runner', 'green',  'Easy'],
+      ['bolt',   'red',    'Tempo'],
+      ['road',   'purple', 'Long run'],
+      ['bike',   'blue',   'Cross-train'],
+      ['bed',    'muted',  'Rest'],
+    ];
+    map.forEach(([k, c, label]) => {
+      const color = COL[c];
+      const cell = document.createElement('div');
+      cell.className = 'typecell';
+      cell.innerHTML = `
+        <div class="icon-box">${svgFor(k, color, zoom)}</div>
+        <div class="chip" style="color:${color};border-color:${color}">${label}</div>`;
+      row.appendChild(cell);
+    });
+    sec.appendChild(row);
+    host.appendChild(sec);
+  }
+
+  // ── Demos ──
+  function renderDemos() {
+    const nav = [
+      ['dashboard','Dash',true], ['calendar','Plan',false], ['runner','Log',false],
+      ['clock','Pace',false], ['team','Team',false], ['chart','History',false],
+    ];
+    document.getElementById('navDemo').innerHTML = nav.map(([k,l,a]) => {
+      const c = a ? COL.green === '#7CFF9E' ? '#0B0F1A' : COL.green : COL.muted;
+      return `<div class="navtab ${a?'active':''}">${inlineIcon(k, a ? '#0B0F1A' : COL.muted, 18)}<span>${l}</span></div>`;
+    }).join('');
+
+    const logs = [
+      ['06/01','runner','green','Easy','3.1'],
+      ['05/31','road','purple','Long run','8.0'],
+      ['05/29','bike','blue','Cross-train','1.0'],
+      ['05/26','bolt','red','Tempo','4.0'],
+    ];
+    document.getElementById('logDemo').innerHTML = logs.map(([d,k,c,label,dist]) => {
+      const color = COL[c];
+      return `<div class="logrow">
+        <span class="date">${d}</span>
+        ${inlineIcon(k, color, 16)}
+        <span class="lchip" style="color:${color};border-color:${color}">${label}</span>
+        <span class="dist">${dist} mi</span>
+      </div>`;
+    }).join('');
+
+    const week = [
+      ['SUN','bed','muted','Rest'], ['MON','runner','green','Easy'], ['TUE','bike','blue','Cross'],
+      ['WED','bolt','red','Tempo'], ['THU','runner','green','Easy'], ['FRI','road','purple','Long'], ['SAT','bed','muted','Rest'],
+    ];
+    document.getElementById('weekDemo').innerHTML = week.map(([dn,k,c,label]) => {
+      const color = COL[c];
+      return `<div class="daycell" style="border-color:${c==='muted'?'var(--border)':color}">
+        <span class="dn">${dn}</span>
+        ${inlineIcon(k, color, 22)}
+        <span class="dl" style="color:${color}">${label}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderAll(){ renderSections(); renderDemos(); }
+
+  // ── Controls ──
+  document.getElementById('zoomSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    zoom = +b.dataset.z;
+    [...document.querySelectorAll('#zoomSeg button')].forEach(x => x.classList.toggle('on', x === b));
+    renderAll();
+  });
+  document.getElementById('glowBtn').addEventListener('click', e => {
+    glow = !glow;
+    e.target.classList.toggle('off', !glow);
+    e.target.textContent = 'CRT Glow · ' + (glow ? 'ON' : 'OFF');
+    renderAll();
+  });
+  document.getElementById('gridBtn').addEventListener('click', e => {
+    showGrid = !showGrid;
+    e.target.classList.toggle('off', !showGrid);
+    e.target.textContent = 'Pixel Grid · ' + (showGrid ? 'ON' : 'OFF');
+    renderAll();
+  });
+
+  renderAll();
+</script>
+</body>
+</html>

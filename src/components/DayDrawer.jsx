@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, ChevronLeft, Trash2, Pencil } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import { X, Trash2, Pencil } from '../icons/PixelIcons';
 import { db } from '../db';
 import { useRunners } from '../hooks/useRunners';
 import { paceStr } from '../lib/pace';

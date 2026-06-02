@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp, Activity, Eye, EyeOff } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { RefreshCw, Activity, PixelIcon } from '../icons/PixelIcons';
 import ActivityDetailModal from './ActivityDetailModal';
 import { db } from '../db';
 import { paceStr } from '../lib/pace';
@@ -9,6 +10,17 @@ import {
   fetchStravaActivities,
   normalizeStravaActivity,
 } from '../lib/strava';
+
+// ── Run-type pixel glyph map ──────────────────────────────────────────────────
+
+const TYPE_GLYPH = {
+  'Easy':       'runner',
+  'Long run':   'road',
+  'Tempo':      'bolt',
+  'Intervals':  'bolt',
+  'Cross-train':'bike',
+  'Rest':       'bed',
+};
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -65,7 +77,10 @@ function ActivityRow({ activity, checked, onToggle, onDismiss, disabled }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{name}</span>
-              <span className={chipClass(type) + ' flex-shrink-0'}>{type}</span>
+              <span className={chipClass(type) + ' flex-shrink-0 inline-flex items-center gap-1'}>
+                {TYPE_GLYPH[type] && <PixelIcon name={TYPE_GLYPH[type]} size={10} color={TYPE_COLOR[type]} />}
+                {type}
+              </span>
               {isDupe && (
                 <span className="chip flex-shrink-0" style={{ color: TOKENS.yellow, borderColor: TOKENS.yellow }}>
                   in log

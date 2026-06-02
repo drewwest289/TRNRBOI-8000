@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, MapPin, Users } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import { RefreshCw, Users } from '../../icons/PixelIcons';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS, TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';

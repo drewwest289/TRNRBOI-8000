@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw } from '../icons/PixelIcons';
 import {
   AreaChart, Area, ComposedChart, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,

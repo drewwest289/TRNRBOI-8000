@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings } from '../../icons/PixelIcons';
 import { useRuns } from '../../hooks/useRuns';
 import { usePlanOverrides } from '../../hooks/usePlanOverrides';
 import { plan16, getMiles, getActualMilesForWeek } from '../../lib/plan';
