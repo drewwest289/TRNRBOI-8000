@@ -14,6 +14,7 @@ export const fetchStravaActivities = (n = 15)   => stravaFetch(`/activities?per_
 export const fetchStravaStreams     = (id)       => stravaFetch(`/activities/${id}/streams`);
 export const fetchStravaActivity   = (id)       => stravaFetch(`/activities/${id}?include_all_efforts=true`);
 export const fetchStravaStreamsAll  = (id)       => stravaFetch(`/activities/${id}/streams?keys=time,distance,heartrate,cadence,altitude,velocity_smooth&key_by_type=true`);
+export const fetchStravaZones      = ()         => stravaFetch('/athlete/zones');
 
 // Convert a Strava activity object into the shape the app uses internally.
 // This matches what normalizeHAEWorkout produces so the existing Dexie
