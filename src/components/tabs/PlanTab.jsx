@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useRuns } from '../../hooks/useRuns';
+import { usePlanOverrides } from '../../hooks/usePlanOverrides';
 import { plan16, getMiles, getActualMilesForWeek } from '../../lib/plan';
 import { TOKENS } from '../../lib/colors';
 import WeekGrid from '../WeekGrid';
@@ -42,7 +43,8 @@ export default function PlanTab({ plan }) {
   const [showSettings, setShowSettings] = useState(false);
   const [drawerDay,    setDrawerDay]    = useState(null); // { dateStr, dayStr, logs }
 
-  const runs = useRuns();
+  const runs          = useRuns();
+  const planOverrides = usePlanOverrides();
 
   // After saving new plan dates, jump the view to the recalculated current week.
   function handleSave(newStart, newRace) {
@@ -181,6 +183,7 @@ export default function PlanTab({ plan }) {
         <WeekGrid
           week={week}
           runs={runs}
+          planOverrides={planOverrides}
           onDayClick={(dateStr, dayStr, logs) => setDrawerDay({ dateStr, dayStr, logs })}
         />
 

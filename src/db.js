@@ -7,6 +7,12 @@ db.version(1).stores({
   runners: '++id, &name',
 });
 
+db.version(2).stores({
+  runs: '++id, date, user, type',
+  runners: '++id, &name',
+  planOverrides: '&date',
+});
+
 db.on('ready', async () => {
   const count = await db.runners.count();
   if (count === 0) {
