@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { RefreshCw, Users } from '../../icons/PixelIcons';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS, TOKENS } from '../../lib/colors';
@@ -43,24 +43,57 @@ async function fetchAllActivities() {
 // ── Derived data ──────────────────────────────────────────────────────────────
 
 const PR_TARGETS = [
-  { name: '1 Mile',       targetM: 1609,  rangeM: [1300,  1900] },
-  { name: '5K',           targetM: 5000,  rangeM: [4750,  5400] },
-  { name: '10K',          targetM: 10000, rangeM: [9500, 10800] },
-  { name: 'Half Marathon', targetM: 21097, rangeM: [19800, 22500] },
+  { name: '400m',          targetM: 400,   rangeM: [340,   500],   goalSecs: 60,   goalLabel: 'sub-1:00',   paceUnit: 'km' },
+  { name: '1K',            targetM: 1000,  rangeM: [900,  1200],   goalSecs: 210,  goalLabel: 'sub-3:30',   paceUnit: 'km' },
+  { name: '1 Mile',        targetM: 1609,  rangeM: [1300,  1900],  goalSecs: 360,  goalLabel: 'sub-6:00',   paceUnit: 'mi' },
+  { name: '5K',            targetM: 5000,  rangeM: [4750,  5400],  goalSecs: 1500, goalLabel: 'sub-25:00',  paceUnit: 'mi' },
+  { name: '10K',           targetM: 10000, rangeM: [9500, 10800],  goalSecs: 3000, goalLabel: 'sub-50:00',  paceUnit: 'mi' },
+  { name: 'Half Marathon', targetM: 21097, rangeM: [19800, 22500], goalSecs: 7200, goalLabel: 'sub-2:00:00',paceUnit: 'mi' },
 ];
 
+function formatPacePerKm(mps) {
+  if (!mps || mps <= 0) return '--';
+  const minPerKm = 1000 / mps / 60;
+  const mins = Math.floor(minPerKm);
+  const secs = Math.round((minPerKm - mins) * 60);
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
 function computePRs(activities) {
-  return PR_TARGETS.map(({ name, rangeM }) => {
+  const today = Date.now();
+  return PR_TARGETS.map(({ name, rangeM, goalSecs, goalLabel, paceUnit }) => {
     const runs = activities.filter(a => {
       const sport = (a.sport_type || a.type || '').toLowerCase();
-      return sport === 'run' && a.distance >= rangeM[0] && a.distance <= rangeM[1];
+      return sport === 'run' && a.distance >= rangeM[0] && a.distance <= rangeM[1] && a.elapsed_time > 0;
     });
-    if (!runs.length) return { name, time: null, date: null };
-    const best = runs.reduce((b, a) => (a.elapsed_time < b.elapsed_time ? a : b));
+    if (!runs.length) return { name, time: null, date: null, pace: null, elapsedSecs: null, top3: [], goalSecs, goalLabel };
+
+    const sorted = [...runs].sort((a, b) => a.elapsed_time - b.elapsed_time);
+    const best = sorted[0];
+    const daysSincePR = best.start_date_local
+      ? Math.floor((today - new Date(best.start_date_local).getTime()) / 86400000)
+      : null;
+
+    const paceStr = paceUnit === 'km'
+      ? `${formatPacePerKm(best.average_speed)}/km`
+      : `${formatPaceFromMps(best.average_speed)}/mi`;
+
     return {
       name,
-      time: formatDuration(best.elapsed_time),
-      date: best.start_date_local?.slice(0, 10) ?? null,
+      time:        formatDuration(best.elapsed_time),
+      elapsedSecs: best.elapsed_time,
+      date:        best.start_date_local?.slice(0, 10) ?? null,
+      daysSincePR,
+      pace:        paceStr,
+      top3: sorted.slice(0, 3).map(a => ({
+        time: formatDuration(a.elapsed_time),
+        date: a.start_date_local?.slice(0, 10) ?? null,
+        pace: paceUnit === 'km'
+          ? `${formatPacePerKm(a.average_speed)}/km`
+          : `${formatPaceFromMps(a.average_speed)}/mi`,
+      })),
+      goalSecs,
+      goalLabel,
     };
   });
 }
@@ -133,6 +166,111 @@ function MetricCard({ label, value, sub }) {
   );
 }
 
+// ── PR row ────────────────────────────────────────────────────────────────────
+
+function PRRow({ pr }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const goalAchieved = pr.elapsedSecs != null && pr.goalSecs != null && pr.elapsedSecs <= pr.goalSecs;
+  // progress toward goal: ratio of goal time to current time (capped at 100)
+  const progress = pr.elapsedSecs && pr.goalSecs
+    ? Math.min(100, Math.round((pr.goalSecs / pr.elapsedSecs) * 100))
+    : null;
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      {/* Main row */}
+      <button
+        onClick={() => pr.top3.length > 0 && setExpanded(e => !e)}
+        className="w-full text-left py-3"
+        style={{ background: 'none', border: 'none', padding: '12px 0', cursor: pr.top3.length > 0 ? 'pointer' : 'default' }}
+      >
+        <div className="flex items-start justify-between gap-2">
+          {/* Left: label + badge */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{pr.name}</span>
+            {pr.daysSincePR !== null && pr.daysSincePR <= 30 && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded"
+                style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: TOKENS.green }}
+              >
+                ↑ {pr.daysSincePR === 0 ? 'today' : `${pr.daysSincePR}d ago`}
+              </span>
+            )}
+            {pr.top3.length > 1 && (
+              <span style={{ color: 'var(--text-muted)', lineHeight: 1 }}>
+                {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </span>
+            )}
+          </div>
+
+          {/* Right: time + date + pace */}
+          <div className="text-right flex-shrink-0">
+            <div
+              className="text-sm font-bold tabular-nums"
+              style={{
+                fontFamily: '"Press Start 2P", monospace',
+                color: pr.time ? TOKENS.green : TOKENS.textMuted,
+              }}
+            >
+              {pr.time ?? '—'}
+            </div>
+            {pr.date && (
+              <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{pr.date}</div>
+            )}
+            {pr.pace && pr.time && (
+              <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{pr.pace}</div>
+            )}
+          </div>
+        </div>
+      </button>
+
+      {/* Progress bar toward goal */}
+      {progress !== null && pr.time && (
+        <div className="pb-2">
+          <div className="flex justify-between items-center mb-1" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+            <span>{goalAchieved ? '✓ Goal achieved' : pr.goalLabel}</span>
+            {!goalAchieved && <span>{progress}%</span>}
+          </div>
+          <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${progress}%`,
+                backgroundColor: goalAchieved ? TOKENS.green : TOKENS.blue,
+                transition: 'width 0.4s ease',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Expanded top-3 */}
+      {expanded && pr.top3.length > 1 && (
+        <div className="pb-3 space-y-1.5 pl-2">
+          {pr.top3.map((t, i) => (
+            <div key={i} className="flex justify-between items-center text-xs">
+              <span style={{ color: 'var(--text-muted)' }}>
+                <span style={{ color: i === 0 ? TOKENS.green : 'var(--text-muted)', marginRight: 6 }}>#{i + 1}</span>
+                {t.date}
+              </span>
+              <div className="text-right">
+                <span
+                  className="tabular-nums"
+                  style={{ color: i === 0 ? TOKENS.green : 'var(--text-primary)' }}
+                >
+                  {t.time}
+                </span>
+                <span className="ml-2" style={{ color: 'var(--text-muted)' }}>{t.pace}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Athlete strip ─────────────────────────────────────────────────────────────
 
 function AthleteStrip({ athlete }) {
@@ -189,7 +327,7 @@ function LoadingSkeleton() {
       </div>
       <div className="card">
         <Skeleton className="h-3 w-32 mb-4" />
-        {[...Array(4)].map((_, i) => (
+        {[...Array(6)].map((_, i) => (
           <div key={i} className="flex justify-between py-3 border-b border-slate-800 last:border-0">
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-4 w-16" />
@@ -327,35 +465,13 @@ export default function DashboardTab() {
         {activities.length === 0 ? (
           <p className="text-xs text-slate-500">No activities found.</p>
         ) : (
-          <div className="divide-y divide-slate-800">
-            {prs.map(pr => (
-              <div
-                key={pr.name}
-                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
-                <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{pr.name}</div>
-                <div className="text-right">
-                  <div
-                    className="text-sm font-bold tabular-nums"
-                    style={{
-                      fontFamily: '"Press Start 2P", monospace',
-                      color: pr.time ? TOKENS.green : TOKENS.textMuted,
-                    }}
-                  >
-                    {pr.time ?? '—'}
-                  </div>
-                  {pr.date && (
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{pr.date}</div>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div>
+            {prs.map(pr => <PRRow key={pr.name} pr={pr} />)}
           </div>
         )}
         {activities.length > 0 && (
           <p className="text-[10px] text-slate-700 mt-3">
-            Best times from {activities.length} activities · based on runs within ±10% of target distance
+            Best times from {activities.length} activities · tap a row to see top 3
           </p>
         )}
       </div>
