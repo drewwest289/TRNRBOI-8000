@@ -3,6 +3,8 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
+import jwt from 'jsonwebtoken';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,6 +13,44 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const QUEUE_DIR        = process.env.QUEUE_DIR ?? __dirname;
 const QUEUE_FILE       = path.join(QUEUE_DIR, 'pending.json');
 const STRAVA_TOKEN_FILE = path.join(QUEUE_DIR, 'strava_tokens.json');
+
+// ── Supabase ──────────────────────────────────────────────────────────────────
+
+// The service_role key bypasses Row Level Security — only used server-side.
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false } }
+);
+
+// ── JWT helpers ───────────────────────────────────────────────────────────────
+
+const JWT_SECRET   = process.env.JWT_SECRET;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const JWT_TTL      = '30d';
+
+function signToken(user) {
+  if (!JWT_SECRET) throw new Error('JWT_SECRET env var is not set');
+  return jwt.sign(
+    { sub: user.id, stravaId: user.strava_id, name: user.name },
+    JWT_SECRET,
+    { expiresIn: JWT_TTL }
+  );
+}
+
+// Middleware: verify Bearer token and attach req.user = { id, stravaId, name }
+function requireAuth(req, res, next) {
+  if (!JWT_SECRET) return res.status(500).json({ error: 'Auth not configured (JWT_SECRET missing)' });
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const payload = jwt.verify(header.slice(7), JWT_SECRET);
+    req.user = { id: payload.sub, stravaId: payload.stravaId, name: payload.name };
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
 
 // ── HAE normalizer ────────────────────────────────────────────────────────────
 // Mirror of src/lib/normalize.js — kept in sync manually.
@@ -170,30 +210,49 @@ async function stravaTokenRequest(params) {
   return res.json();
 }
 
-// Returns a valid access token, refreshing automatically if expired.
-async function getValidAccessToken() {
-  const tokens = readStravaTokens();
-  if (!tokens) throw new Error('Strava not connected — complete OAuth first via GET /auth/strava');
+// Returns a valid access token for a given user_id, refreshing from Supabase if needed.
+// Falls back to the legacy global token file for backwards compatibility during migration.
+async function getValidAccessToken(userId = null) {
+  if (userId) {
+    const { data: row, error } = await supabase
+      .from('strava_tokens')
+      .select('access_token, refresh_token, expires_at')
+      .eq('user_id', userId)
+      .single();
 
-  // Strava tokens expire every 6 hours; refresh if within 5 minutes of expiry.
-  const expiresAt = tokens.expires_at * 1000; // convert Unix seconds → ms
-  if (Date.now() < expiresAt - 5 * 60 * 1000) {
-    return tokens.access_token;
+    if (error || !row) throw new Error('No Strava tokens found for user');
+
+    const expiresAtMs = row.expires_at * 1000;
+    if (Date.now() < expiresAtMs - 5 * 60 * 1000) return row.access_token;
+
+    console.log('[strava] refreshing token for user', userId);
+    const fresh = await stravaTokenRequest({ grant_type: 'refresh_token', refresh_token: row.refresh_token });
+    await supabase.from('strava_tokens').upsert({
+      user_id:       userId,
+      access_token:  fresh.access_token,
+      refresh_token: fresh.refresh_token,
+      expires_at:    fresh.expires_at,
+    });
+    console.log('[strava] token refreshed, new expiry:', new Date(fresh.expires_at * 1000).toISOString());
+    return fresh.access_token;
   }
 
-  console.log('[strava] access token expired — refreshing');
-  const fresh = await stravaTokenRequest({
-    grant_type:    'refresh_token',
-    refresh_token: tokens.refresh_token,
-  });
+  // Legacy path: global token file (used until all routes are migrated to per-user).
+  const tokens = readStravaTokens();
+  if (!tokens) throw new Error('Strava not connected — complete OAuth first via GET /auth/strava');
+  const expiresAt = tokens.expires_at * 1000;
+  if (Date.now() < expiresAt - 5 * 60 * 1000) return tokens.access_token;
+
+  console.log('[strava] access token expired — refreshing (global)');
+  const fresh = await stravaTokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token });
   writeStravaTokens(fresh);
   console.log('[strava] tokens refreshed, new expiry:', new Date(fresh.expires_at * 1000).toISOString());
   return fresh.access_token;
 }
 
 // Authenticated fetch against Strava API v3.
-async function stravaGet(path, params = {}) {
-  const token = await getValidAccessToken();
+async function stravaGet(path, params = {}, userId = null) {
+  const token = await getValidAccessToken(userId);
   const url   = new URL(`https://www.strava.com/api/v3${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
@@ -218,13 +277,14 @@ const CORS_ORIGINS = process.env.CORS_ORIGINS
       'https://trainer-app-v2.pages.dev',
       'https://trnrboi8000.pages.dev',
       'https://trnrboi-8000.pages.dev',
+      'https://app.west-casa.com',
     ];
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json({ limit: '25mb' }));
 
-// ── HAE push endpoints (unchanged) ────────────────────────────────────────────
+// ── HAE push endpoints ────────────────────────────────────────────────────────
 
 app.post('/api/workouts', (req, res) => {
   const raw = req.body;
@@ -269,10 +329,9 @@ app.delete('/api/workouts/pending', (_req, res) => {
   res.json({ ok: true });
 });
 
-// ── Strava OAuth ──────────────────────────────────────────────────────────────
+// ── Auth endpoints ────────────────────────────────────────────────────────────
 
 // Step 1 — redirect browser to Strava's authorization page.
-// Visit GET /auth/strava in a browser to kick off the flow.
 app.get('/auth/strava', (_req, res) => {
   const clientId    = process.env.STRAVA_CLIENT_ID;
   const redirectUri = process.env.STRAVA_REDIRECT_URI;
@@ -283,35 +342,70 @@ app.get('/auth/strava', (_req, res) => {
   url.searchParams.set('client_id',     clientId);
   url.searchParams.set('redirect_uri',  redirectUri);
   url.searchParams.set('response_type', 'code');
-  // activity:read_all includes private activities; remove if not needed.
   url.searchParams.set('scope',         'read,activity:read_all,profile:read_all');
   res.redirect(url.toString());
 });
 
 // Step 2 — Strava redirects back here with ?code=...
-// STRAVA_REDIRECT_URI must point to this route, e.g.
-//   https://half-marathon-api.onrender.com/auth/strava/callback
+// Upserts the user + tokens in Supabase, issues a JWT, then redirects to the frontend.
 app.get('/auth/strava/callback', async (req, res) => {
   const { code, error } = req.query;
   if (error) return res.status(400).json({ error: `Strava denied: ${error}` });
   if (!code)  return res.status(400).json({ error: 'Missing code parameter' });
 
   try {
-    const tokens = await stravaTokenRequest({ grant_type: 'authorization_code', code });
-    writeStravaTokens(tokens);
-    console.log('[strava] OAuth complete — athlete:', tokens.athlete?.username ?? tokens.athlete?.id);
-    res.json({
-      ok: true,
-      athlete:   tokens.athlete?.username ?? tokens.athlete?.id,
-      expiresAt: new Date(tokens.expires_at * 1000).toISOString(),
-    });
+    const tokenData = await stravaTokenRequest({ grant_type: 'authorization_code', code });
+    const athlete   = tokenData.athlete;
+
+    // Upsert user row (create on first login, update name/avatar on subsequent logins).
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .upsert(
+        { strava_id: athlete.id, name: athlete.firstname + ' ' + athlete.lastname, avatar_url: athlete.profile_medium },
+        { onConflict: 'strava_id' }
+      )
+      .select()
+      .single();
+
+    if (userErr) throw new Error(`Supabase user upsert: ${userErr.message}`);
+
+    // Upsert Strava tokens for this user.
+    const { error: tokenErr } = await supabase
+      .from('strava_tokens')
+      .upsert({
+        user_id:       user.id,
+        access_token:  tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        expires_at:    tokenData.expires_at,
+      });
+
+    if (tokenErr) throw new Error(`Supabase token upsert: ${tokenErr.message}`);
+
+    // Also keep the legacy global token file so existing Strava proxy routes
+    // continue working while we migrate them to per-user. Remove in Phase 3.
+    writeStravaTokens(tokenData);
+
+    const appToken = signToken(user);
+    console.log('[auth] login:', user.name, '— strava_id:', athlete.id);
+
+    // Redirect the browser back to the frontend with the JWT in the query string.
+    // The frontend will read it, store it in localStorage, and strip it from the URL.
+    res.redirect(`${FRONTEND_URL}/?token=${appToken}`);
   } catch (err) {
-    console.error('[strava] token exchange failed:', err.message);
-    res.status(502).json({ error: err.message });
+    console.error('[auth] callback error:', err.message);
+    res.redirect(`${FRONTEND_URL}/?auth_error=${encodeURIComponent(err.message)}`);
   }
 });
 
-// Status — shows whether tokens are stored and when they expire.
+// Returns the current user's profile from their JWT.
+app.get('/auth/me', requireAuth, (req, res) => {
+  res.json({ id: req.user.id, stravaId: req.user.stravaId, name: req.user.name });
+});
+
+// Client calls this to signal logout (no server-side session to destroy; JWT is stateless).
+app.post('/auth/logout', (_req, res) => res.json({ ok: true }));
+
+// Legacy status endpoint — still works for backwards compat.
 app.get('/auth/strava/status', (_req, res) => {
   const tokens = readStravaTokens();
   if (!tokens) return res.json({ connected: false });
@@ -324,8 +418,9 @@ app.get('/auth/strava/status', (_req, res) => {
 });
 
 // ── Strava API proxy endpoints ────────────────────────────────────────────────
+// These still use the global token file during Phase 2.
+// Phase 3 will add requireAuth and pass req.user.id to stravaGet.
 
-// GET /api/strava/activities?per_page=30&page=1&before=<unix>&after=<unix>
 app.get('/api/strava/activities', async (req, res) => {
   try {
     const { per_page = 30, page = 1, before, after } = req.query;
@@ -340,8 +435,6 @@ app.get('/api/strava/activities', async (req, res) => {
   }
 });
 
-// GET /api/strava/activities/all — paginates GET /athlete/activities up to 500
-// activities for the dashboard. MUST stay above /:id to avoid route shadowing.
 app.get('/api/strava/activities/all', async (req, res) => {
   try {
     const all = [];
@@ -360,7 +453,6 @@ app.get('/api/strava/activities/all', async (req, res) => {
   }
 });
 
-// GET /api/strava/activities/:id — full detail including best efforts
 app.get('/api/strava/activities/:id', async (req, res) => {
   try {
     const data = await stravaGet(`/activities/${req.params.id}`, { include_all_efforts: true });
@@ -371,15 +463,10 @@ app.get('/api/strava/activities/:id', async (req, res) => {
   }
 });
 
-// GET /api/strava/activities/:id/streams?keys=heartrate,latlng,altitude,time,distance,velocity_smooth,watts
-// keys defaults to the most useful set; override via query param.
 app.get('/api/strava/activities/:id/streams', async (req, res) => {
   try {
     const keys = req.query.keys || 'heartrate,latlng,altitude,time,distance,velocity_smooth,watts';
-    const data = await stravaGet(`/activities/${req.params.id}/streams`, {
-      keys,
-      key_by_type: true,
-    });
+    const data = await stravaGet(`/activities/${req.params.id}/streams`, { keys, key_by_type: true });
     res.json(data);
   } catch (err) {
     console.error('[strava]', err.message);
@@ -387,13 +474,10 @@ app.get('/api/strava/activities/:id/streams', async (req, res) => {
   }
 });
 
-// GET /api/strava/athlete — profile, stats, and PR/best-efforts summary
 app.get('/api/strava/athlete', async (req, res) => {
   try {
     const [athlete, stats] = await Promise.all([
       stravaGet('/athlete'),
-      // Stats requires athlete ID — pull it from stored tokens so we don't
-      // need the client to know it.
       (async () => {
         const tokens = readStravaTokens();
         const id = tokens?.athlete?.id;
@@ -415,28 +499,12 @@ app.get('/health',     (_req, res) => res.json({ ok: true }));
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 
-// Restore Strava tokens from env vars if /tmp was wiped by a redeploy.
 restoreTokensFromEnv();
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`[api] listening on port ${PORT}`);
-  console.log(`[api] queue file  : ${QUEUE_FILE}`);
-  console.log(`[api] token file  : ${STRAVA_TOKEN_FILE}`);
-  console.log(`[api] CORS origins: ${CORS_ORIGINS.join(', ')}`);
-  console.log(`[api]`);
-  console.log(`[api]   POST   /api/workouts                   — HAE push`);
-  console.log(`[api]   GET    /api/workouts/pending            — React app polls`);
-  console.log(`[api]   DELETE /api/workouts/pending            — React app clears`);
-  console.log(`[api]`);
-  console.log(`[api]   GET    /auth/strava                     — start OAuth (open in browser)`);
-  console.log(`[api]   GET    /auth/strava/callback            — OAuth redirect target`);
-  console.log(`[api]   GET    /auth/strava/status              — token status`);
-  console.log(`[api]`);
-  console.log(`[api]   GET    /api/strava/activities           — recent activities`);
-  console.log(`[api]   GET    /api/strava/activities/:id       — activity detail`);
-  console.log(`[api]   GET    /api/strava/activities/:id/streams — HR, GPS, power`);
-  console.log(`[api]   GET    /api/strava/athlete              — profile + stats`);
-  console.log(`[api]`);
-  console.log(`[api]   GET    /health                          — Render health check`);
+  console.log(`[api] Supabase: ${process.env.SUPABASE_URL ? 'configured' : 'NOT CONFIGURED — set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY'}`);
+  console.log(`[api] JWT:      ${JWT_SECRET ? 'configured' : 'NOT CONFIGURED — set JWT_SECRET'}`);
+  console.log(`[api] Frontend: ${FRONTEND_URL}`);
 });
