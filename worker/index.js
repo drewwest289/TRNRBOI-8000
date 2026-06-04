@@ -1,5 +1,5 @@
 const PAGES_ORIGIN  = 'https://app.west-casa.com';
-const RENDER_ORIGIN = 'https://half-marathon-api.onrender.com';
+const RENDER_ORIGIN = 'https://trainer-app-2u17.onrender.com';
 const SUBPATH       = '/trnrboi8000';
 
 export default {
