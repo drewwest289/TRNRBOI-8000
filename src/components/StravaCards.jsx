@@ -25,9 +25,16 @@ const TYPE_GLYPH = {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 async function checkDupe(w) {
-  if (!w.distMi || !w.date) return { ...w, _status: 'invalid' };
+  if (!w.date) return { ...w, _status: 'invalid' };
   const onDate = await db.runs.where('date').equals(w.date).toArray();
-  const isDupe = onDate.some(r => Math.abs(r.dist - w.distMi) < 0.01);
+  let isDupe;
+  if (w.distMi) {
+    // Distance-based activities: match on distance
+    isDupe = onDate.some(r => Math.abs(r.dist - w.distMi) < 0.01);
+  } else {
+    // Zero-distance (HIIT, cross-train with no GPS): match on duration within 2 min
+    isDupe = onDate.some(r => r.dist === 0 && Math.abs(r.dur - w.durMin) <= 2);
+  }
   return { ...w, _status: isDupe ? 'duplicate' : 'new' };
 }
 
