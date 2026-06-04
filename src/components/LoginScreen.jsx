@@ -4,8 +4,10 @@
 // with a ?token= query param that useAuth picks up.
 export default function LoginScreen() {
   function handleLogin() {
-    // Vite proxies /auth/* to localhost:3001 in dev; CF worker handles it in prod.
-    window.location.href = '/auth/strava';
+    const authBase = import.meta.env.DEV
+      ? 'http://localhost:3001'
+      : 'https://trainer-app-2u17.onrender.com';
+    window.location.href = `${authBase}/auth/strava`;
   }
 
   return (
