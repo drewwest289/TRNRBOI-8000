@@ -2,7 +2,7 @@ name            = "west-casa-router"
 main            = "index.js"
 compatibility_date = "2024-01-01"
 
-account_id = "YOUR_CLOUDFLARE_ACCOUNT_ID"
+account_id = "b2827c540cd24a97b4823d027167b307"
 
 routes = [
   { pattern = "west-casa.com/*", zone_name = "west-casa.com" }
