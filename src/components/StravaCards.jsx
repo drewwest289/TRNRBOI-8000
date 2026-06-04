@@ -39,11 +39,12 @@ async function importToDb(activities, selected, user) {
     if (a._status !== 'new') { dupes++; continue; }
     await db.runs.add({
       user,
-      date:  a.date,
-      dist:  a.distMi,
-      dur:   a.durMin,
-      type:  a.type,
-      notes: a.hr ? `Avg HR ${a.hr} bpm` : '',
+      date:     a.date,
+      dist:     a.distMi,
+      dur:      a.durMin,
+      type:     a.type,
+      notes:    a.hr ? `Avg HR ${a.hr} bpm` : '',
+      stravaId: a.stravaId || null,
     });
     imported++;
   }

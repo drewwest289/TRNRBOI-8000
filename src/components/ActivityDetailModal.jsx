@@ -334,23 +334,37 @@ function SegmentEfforts({ efforts }) {
   );
 }
 
+// ── Cache ─────────────────────────────────────────────────────────────────────
+
+const detailCache  = new Map(); // stravaId → activity detail
+const streamsCache = new Map(); // stravaId → streams
+
 // ── Main modal ────────────────────────────────────────────────────────────────
 
 export default function ActivityDetailModal({ activity, onClose }) {
-  const [detail,  setDetail]  = useState(null);
-  const [streams, setStreams] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const hasStrava = Boolean(activity.stravaId);
+
+  const [detail,  setDetail]  = useState(() => detailCache.get(activity.stravaId) ?? null);
+  const [streams, setStreams] = useState(() => streamsCache.get(activity.stravaId) ?? null);
+  const [loading, setLoading] = useState(hasStrava && !detailCache.has(activity.stravaId));
   const [err,     setErr]     = useState(null);
 
   useEffect(() => {
+    if (!hasStrava) return;
+    if (detailCache.has(activity.stravaId)) return; // already cached
     Promise.all([
       fetchStravaActivity(activity.stravaId),
       fetchStravaStreamsAll(activity.stravaId),
     ])
-      .then(([d, s]) => { setDetail(d); setStreams(s); })
+      .then(([d, s]) => {
+        detailCache.set(activity.stravaId, d);
+        streamsCache.set(activity.stravaId, s);
+        setDetail(d);
+        setStreams(s);
+      })
       .catch(e => setErr(e.message))
       .finally(() => setLoading(false));
-  }, [activity.stravaId]);
+  }, [activity.stravaId, hasStrava]);
 
   const { elevPoints, hrCadPoints } = streams
     ? buildStreamPoints(streams)
@@ -358,7 +372,7 @@ export default function ActivityDetailModal({ activity, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4"
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/70" />
@@ -389,18 +403,29 @@ export default function ActivityDetailModal({ activity, onClose }) {
 
         {/* Body */}
         <div className="px-5 py-5 space-y-6">
-          {loading && (
+          {!hasStrava && (
+            <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>
+              No Strava link — splits and charts unavailable for manually logged runs.
+              {activity.notes && (
+                <span className="block mt-2" style={{ color: 'var(--text-primary)' }}>
+                  📝 {activity.notes}
+                </span>
+              )}
+            </p>
+          )}
+
+          {hasStrava && loading && (
             <div className="flex items-center gap-2 text-xs text-slate-500 py-4">
               <RefreshCw size={12} className="animate-spin" />
               Loading activity data…
             </div>
           )}
 
-          {err && (
+          {hasStrava && err && (
             <p className="text-xs text-red-400 py-2">Failed to load: {err}</p>
           )}
 
-          {!loading && !err && (
+          {hasStrava && !loading && !err && (
             <>
               <SplitsTable splits={detail?.splits_metric} />
               <ElevationChart points={elevPoints} />
