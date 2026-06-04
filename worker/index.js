@@ -1,8 +1,6 @@
-const PAGES_ORIGIN = 'https://app.west-casa.com';
-const SUBPATH      = '/trnrboi8000';
-
-// Paths that must pass through to the Pages origin as-is (no prefix stripping)
-const PASSTHROUGH  = ['/api/', '/auth/'];
+const PAGES_ORIGIN  = 'https://app.west-casa.com';
+const RENDER_ORIGIN = 'https://half-marathon-api.onrender.com';
+const SUBPATH       = '/trnrboi8000';
 
 export default {
   async fetch(request) {
@@ -13,8 +11,20 @@ export default {
       return new Response('west-casa.com', { status: 200 });
     }
 
-    // /api/* and /auth/* → proxy to Pages origin as-is (backend API)
-    if (PASSTHROUGH.some(p => url.pathname.startsWith(p))) {
+    // /auth/* → Render backend directly (OAuth flow involves browser redirects
+    // that Pages cannot handle).
+    if (url.pathname.startsWith('/auth/')) {
+      const target = new URL(url.pathname + url.search, RENDER_ORIGIN);
+      return fetch(new Request(target, {
+        method:  request.method,
+        headers: request.headers,
+        body:    ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
+        redirect: 'manual',
+      }));
+    }
+
+    // /api/* → Pages origin, which has a Pages function that proxies to Render.
+    if (url.pathname.startsWith('/api/')) {
       const target = new URL(url.pathname + url.search, PAGES_ORIGIN);
       return fetch(new Request(target, {
         method:  request.method,
