@@ -1,4 +1,4 @@
-const PAGES_ORIGIN = 'https://trnrboi8000.pages.dev';
+const PAGES_ORIGIN = 'https://app.west-casa.com';
 const SUBPATH      = '/trnrboi8000';
 
 export default {
