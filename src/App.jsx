@@ -6,7 +6,9 @@ import LogTab from './components/tabs/LogTab';
 import PaceTab from './components/tabs/PaceTab';
 import TeamTab from './components/tabs/TeamTab';
 import HistoryTab from './components/tabs/HistoryTab';
+import LoginScreen from './components/LoginScreen';
 import { useTrainingPlan } from './hooks/useTrainingPlan';
+import { useAuth } from './hooks/useAuth';
 
 function RaceCountdown({ days }) {
   if (days === null) return <>Set start date</>;
@@ -16,10 +18,11 @@ function RaceCountdown({ days }) {
 }
 
 export default function App() {
+  const { user, logout } = useAuth();
   const [tab, setTab] = useState('dashboard');
-  // Single source of truth for training dates — passed down to PlanTab so
-  // the race countdown here and the week calculation in the plan stay in sync.
   const plan = useTrainingPlan();
+
+  if (!user) return <LoginScreen />;
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -45,6 +48,14 @@ export default function App() {
             >
               <RaceCountdown days={plan.daysUntilRace} />
             </div>
+            <button
+              onClick={logout}
+              className="text-xs mt-1"
+              style={{ color: 'var(--text-muted)', opacity: 0.5 }}
+              title={`Signed in as ${user.name}`}
+            >
+              sign out
+            </button>
           </div>
         </header>
 
