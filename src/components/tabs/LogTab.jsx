@@ -6,6 +6,7 @@ import { useRunners } from '../../hooks/useRunners';
 import { paceStr } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { chipClass } from '../../lib/colors';
+import ActivityDetailModal from '../ActivityDetailModal';
 
 const RUN_TYPES = ['Easy', 'Tempo', 'Long run', 'Intervals', 'Cross-train'];
 
@@ -18,7 +19,8 @@ export default function LogTab() {
   const [form, setForm] = useState({
     user: '', date: localToday(), dist: '', dur: '', type: 'Easy', notes: '',
   });
-  const [feedback, setFeedback] = useState('');
+  const [feedback,     setFeedback]     = useState('');
+  const [detailRun,    setDetailRun]    = useState(null);
 
   useEffect(() => {
     if (runners.length > 0 && !form.user) {
@@ -119,6 +121,21 @@ export default function LogTab() {
         )}
       </div>
 
+      {detailRun && (
+        <ActivityDetailModal
+          activity={{
+            name:     detailRun.notes || `${detailRun.type} run`,
+            date:     detailRun.date,
+            distMi:   detailRun.dist,
+            durMin:   detailRun.dur,
+            hr:       null,
+            notes:    detailRun.notes,
+            stravaId: detailRun.stravaId ?? null,
+          }}
+          onClose={() => setDetailRun(null)}
+        />
+      )}
+
       {/* Recent runs — 48px rows with chips */}
       <div className="card">
         <div className="section-label">Recent runs</div>
@@ -133,7 +150,7 @@ export default function LogTab() {
               return (
                 <div
                   key={r.id}
-                  className="grid gap-3 items-center group"
+                  className="grid gap-3 items-center group cursor-pointer"
                   style={{
                     gridTemplateColumns: '76px 1fr 60px 52px 32px',
                     minHeight: '48px',
@@ -141,6 +158,7 @@ export default function LogTab() {
                     borderBottom: '1px solid var(--border)',
                     backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
                   }}
+                  onClick={() => setDetailRun(r)}
                 >
                   <div className="text-xs pl-2" style={{ color: 'var(--text-muted)' }}>{r.date}</div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -154,7 +172,7 @@ export default function LogTab() {
                     {r.dist.toFixed(1)} mi
                   </div>
                   <button
-                    onClick={() => handleDelete(r.id)}
+                    onClick={e => { e.stopPropagation(); handleDelete(r.id); }}
                     className="opacity-0 group-hover:opacity-100 flex items-center justify-center"
                     style={{ color: 'var(--text-muted)', transition: 'none' }}
                     aria-label="Delete run"

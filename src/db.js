@@ -13,6 +13,12 @@ db.version(2).stores({
   planOverrides: '&date',
 });
 
+db.version(3).stores({
+  runs: '++id, date, user, type, stravaId',
+  runners: '++id, &name',
+  planOverrides: '&date',
+});
+
 db.on('ready', async () => {
   const count = await db.runners.count();
   if (count === 0) {

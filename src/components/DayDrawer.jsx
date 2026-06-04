@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { X, Trash2, Pencil } from '../icons/PixelIcons';
 import { db } from '../db';
+import ActivityDetailModal from './ActivityDetailModal';
 import { useRunners } from '../hooks/useRunners';
 import { paceStr } from '../lib/pace';
 import { getDayType, getDayMiles, localDateStr } from '../lib/plan';
@@ -59,8 +60,25 @@ function getWeekDates(dateStr) {
 
 /** Stats view — shown when run(s) are already logged for the day */
 function StatsView({ logs, onEdit, onDelete, onBack }) {
+  const [detailRun, setDetailRun] = useState(null);
+
   return (
     <div>
+      {detailRun && (
+        <ActivityDetailModal
+          activity={{
+            name:     detailRun.notes || `${detailRun.type} run`,
+            date:     detailRun.date,
+            distMi:   detailRun.dist,
+            durMin:   detailRun.dur,
+            hr:       null,
+            notes:    detailRun.notes,
+            stravaId: detailRun.stravaId ?? null,
+          }}
+          onClose={() => setDetailRun(null)}
+        />
+      )}
+
       {logs.map((r, idx) => {
         const color = TYPE_COLOR[r.type] || '#64748b';
         const pace  = paceStr(r.dist, r.dur);
@@ -74,6 +92,13 @@ function StatsView({ logs, onEdit, onDelete, onBack }) {
                 {r.type}
               </span>
               <div className="flex items-center gap-2">
+                <button
+                  className="btn-ghost text-xs"
+                  onClick={() => setDetailRun(r)}
+                  aria-label="View details"
+                >
+                  Details
+                </button>
                 {r.type !== 'Rest' && (
                   <button
                     className="btn-icon"
