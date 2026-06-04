@@ -76,7 +76,7 @@ export default function PlanTab({ plan }) {
         </div>
         <PlanSettings
           startStr={null}
-          raceStr={null}
+          raceStr={raceStr}
           onSave={handleSave}
           // No onCancel — the user must set dates before seeing the plan.
         />

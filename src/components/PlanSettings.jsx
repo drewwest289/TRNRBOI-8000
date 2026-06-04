@@ -23,7 +23,11 @@ function addWeeks(dateStr, n) {
 export default function PlanSettings({ startStr, raceStr, onSave, onCancel }) {
   const [start,      setStart]      = useState(startStr ?? '');
   const [race,       setRace]       = useState(raceStr ?? (startStr ? addWeeks(startStr, 16) : ''));
-  const [raceEdited, setRaceEdited] = useState(!!raceStr); // true once user manually changes race date
+  // True only when the stored race date differs from the auto-computed start+16w, meaning the user
+  // deliberately picked a different date. If they match, treat as unedited so changing start date
+  // still auto-updates the race date.
+  const autoRace = startStr ? addWeeks(startStr, 16) : '';
+  const [raceEdited, setRaceEdited] = useState(!!raceStr && raceStr !== autoRace);
 
   function handleStartChange(val) {
     setStart(val);
