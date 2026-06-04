@@ -11,16 +11,12 @@ export default {
       return new Response('west-casa.com', { status: 200 });
     }
 
-    // /auth/* → Render backend directly (OAuth flow involves browser redirects
-    // that Pages cannot handle).
+    // /auth/* → redirect browser directly to Render backend.
+    // OAuth is a browser navigation flow, not an API call, so we let the
+    // browser talk to Render directly rather than trying to proxy it.
     if (url.pathname.startsWith('/auth/')) {
       const target = new URL(url.pathname + url.search, RENDER_ORIGIN);
-      return fetch(new Request(target, {
-        method:  request.method,
-        headers: request.headers,
-        body:    ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
-        redirect: 'manual',
-      }));
+      return Response.redirect(target.toString(), 302);
     }
 
     // /api/* → Pages origin, which has a Pages function that proxies to Render.
