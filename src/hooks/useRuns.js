@@ -17,7 +17,7 @@ function subscribe(fn) {
 }
 
 function fetchRuns() {
-  apiFetch('/api/runs').then(notify).catch(() => {});
+  apiFetch('/api/runs').then(notify).catch(err => console.error('[useRuns] fetch failed:', err.message));
 }
 
 export function useRuns() {

@@ -550,7 +550,7 @@ app.delete('/api/plan/overrides/:date', requireAuth, async (req, res) => {
 app.get('/api/runs', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('runs')
-    .select('id, date, dist, dur, type, notes, strava_id')
+    .select('*')
     .eq('user_id', req.user.id)
     .order('date', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
