@@ -468,6 +468,95 @@ app.delete('/api/runs/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Team leaderboard ──────────────────────────────────────────────────────────
+
+function isoDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function weekStartOf(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return isoDate(d);
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return isoDate(d);
+}
+
+function computeMetrics(runs, today) {
+  const thisWeek = weekStartOf(today);
+
+  const weeklyMiles = runs
+    .filter(r => weekStartOf(r.date) === thisWeek)
+    .reduce((s, r) => s + parseFloat(r.dist), 0);
+
+  const cut30 = addDays(today, -30);
+  const longestRun = runs
+    .filter(r => r.date >= cut30 && r.type !== 'Cross-train')
+    .reduce((max, r) => Math.max(max, parseFloat(r.dist)), 0);
+
+  const activityDates = new Set(runs.map(r => r.date));
+  let streak = 0;
+  let check = today;
+  while (activityDates.has(check)) {
+    streak++;
+    check = addDays(check, -1);
+  }
+
+  const cut8 = addDays(today, -56);
+  const cut4 = addDays(today, -28);
+  const runRuns = runs.filter(r => r.dist > 0 && r.dur > 0 && r.type !== 'Cross-train');
+  const recent  = runRuns.filter(r => r.date >= cut4);
+  const prior   = runRuns.filter(r => r.date >= cut8 && r.date < cut4);
+
+  function avgPace(arr) {
+    if (!arr.length) return null;
+    return arr.reduce((s, r) => s + r.dur / parseFloat(r.dist), 0) / arr.length;
+  }
+  const rp = avgPace(recent);
+  const pp = avgPace(prior);
+  const paceImprovement = rp != null && pp != null ? parseFloat((pp - rp).toFixed(2)) : 0;
+
+  return {
+    weeklyMiles:     parseFloat(weeklyMiles.toFixed(2)),
+    longestRun:      parseFloat(longestRun.toFixed(2)),
+    streak,
+    paceImprovement,
+  };
+}
+
+app.get('/api/team/leaderboard', requireAuth, async (req, res) => {
+  try {
+    const [{ data: users, error: userErr }, { data: allRuns, error: runErr }] = await Promise.all([
+      supabase.from('users').select('id, name'),
+      supabase.from('runs').select('user_id, date, dist, dur, type'),
+    ]);
+    if (userErr) return res.status(500).json({ error: userErr.message });
+    if (runErr)  return res.status(500).json({ error: runErr.message });
+
+    const today = isoDate(new Date());
+    const runsByUser = {};
+    for (const r of allRuns ?? []) {
+      if (!runsByUser[r.user_id]) runsByUser[r.user_id] = [];
+      runsByUser[r.user_id].push(r);
+    }
+
+    const leaderboard = (users ?? []).map(u => ({
+      id:      u.id,
+      name:    u.name,
+      metrics: computeMetrics(runsByUser[u.id] ?? [], today),
+    }));
+
+    res.json(leaderboard);
+  } catch (err) {
+    console.error('[team]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Health checks ─────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, queueLength: readQueue().length }));
