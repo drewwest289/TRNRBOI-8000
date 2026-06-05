@@ -154,6 +154,7 @@
     outline: none;
   }
   .field::placeholder { color: var(--text-muted); opacity: 0.6; }
+  input[type="date"].field { color-scheme: dark; }
   .field:focus {
     border-color: var(--green);
     box-shadow: 0 0 4px rgba(124, 255, 158, 0.3);
