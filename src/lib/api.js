@@ -7,6 +7,7 @@ export function getToken() {
 export async function apiFetch(path, options = {}) {
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
+    cache: 'no-store',
     ...options,
     headers: {
       'Content-Type': 'application/json',
