@@ -129,7 +129,7 @@ export default function LogTab() {
             durMin:   detailRun.dur,
             hr:       null,
             notes:    detailRun.notes,
-            stravaId: detailRun.stravaId ?? null,
+            stravaId: detailRun.strava_id ?? detailRun.stravaId ?? null,
           }}
           onClose={() => setDetailRun(null)}
         />
