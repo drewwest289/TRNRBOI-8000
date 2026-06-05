@@ -138,6 +138,8 @@ function ActivityRow({ activity, checked, onToggle, onDismiss, disabled }) {
 
 const COLLAPSED_KEY     = 'strava-activities-collapsed';
 const SHOW_IMPORTED_KEY = 'strava-activities-show-imported';
+const IMPORT_COUNT_KEY  = 'strava-import-count';
+const COUNT_OPTIONS     = [25, 50, 100, 200];
 
 export function StravaActivitiesCard({ defaultUser }) {
   const existingRuns = useRuns();
@@ -147,9 +149,14 @@ export function StravaActivitiesCard({ defaultUser }) {
   const [dismissed,    setDismissed]    = useState(new Set()); // stravaIds individually hidden via × button
   const [result,       setResult]       = useState(null);
   const [errMsg,       setErrMsg]       = useState('');
+  const [loadingMsg,   setLoadingMsg]   = useState('');
   // Persist collapsed + showImported to localStorage so they survive reload.
   const [collapsed,    setCollapsed]    = useState(() => localStorage.getItem(COLLAPSED_KEY) === 'true');
   const [showImported, setShowImported] = useState(() => localStorage.getItem(SHOW_IMPORTED_KEY) === 'true');
+  const [importCount,  setImportCount]  = useState(() => {
+    const stored = parseInt(localStorage.getItem(IMPORT_COUNT_KEY), 10);
+    return COUNT_OPTIONS.includes(stored) ? stored : 25;
+  });
 
   function toggleCollapsed() {
     setCollapsed(c => {
@@ -170,13 +177,32 @@ export function StravaActivitiesCard({ defaultUser }) {
 
   const load = useCallback(async () => {
     setPhase('loading');
+    setLoadingMsg('');
     setErrMsg('');
     setDismissed(new Set());
     try {
-      const raw  = await fetchStravaActivities(15);
-      const norm = raw.map(normalizeStravaActivity);
+      let norm;
+      if (importCount <= 200) {
+        setLoadingMsg(`Fetching ${importCount} activities…`);
+        const raw = await fetchStravaActivities(importCount, 1);
+        norm = raw.map(normalizeStravaActivity);
+      } else {
+        // Paginate in 200-item batches
+        const all = [];
+        let page = 1;
+        while (all.length < importCount) {
+          setLoadingMsg(`Fetching page ${page}…`);
+          const batch = await fetchStravaActivities(200, page);
+          all.push(...batch);
+          if (batch.length < 200 || all.length >= importCount) break;
+          page++;
+        }
+        norm = all.slice(0, importCount).map(normalizeStravaActivity);
+      }
+      setLoadingMsg('');
       setNormalized(norm);
     } catch (e) {
+      setLoadingMsg('');
       const msg = e.message || '';
       if (msg.includes('not connected') || msg.includes('OAuth')) {
         setPhase('disconnected');
@@ -185,7 +211,7 @@ export function StravaActivitiesCard({ defaultUser }) {
         setPhase('error');
       }
     }
-  }, []);
+  }, [importCount]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -269,6 +295,20 @@ export function StravaActivitiesCard({ defaultUser }) {
         {/* Right-side controls — only when not collapsed */}
         {!collapsed && (
           <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            {/* Count selector */}
+            <select
+              className="text-xs rounded px-1 py-0.5 border border-slate-700 bg-slate-800"
+              style={{ color: 'var(--text-muted)' }}
+              value={importCount}
+              onChange={e => {
+                const v = parseInt(e.target.value, 10);
+                setImportCount(v);
+                localStorage.setItem(IMPORT_COUNT_KEY, String(v));
+              }}
+              title="Number of activities to fetch"
+            >
+              {COUNT_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
             {/* Show/hide imported toggle */}
             {importedCount > 0 && (phase === 'ready' || phase === 'done') && (
               <button
@@ -287,7 +327,8 @@ export function StravaActivitiesCard({ defaultUser }) {
             )}
             {phase === 'loading' && (
               <span className="text-xs text-slate-500 flex items-center gap-1.5">
-                <RefreshCw size={12} className="animate-spin" /> Loading…
+                <RefreshCw size={12} className="animate-spin" />
+                {loadingMsg || 'Loading…'}
               </span>
             )}
           </div>

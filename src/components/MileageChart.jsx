@@ -1,7 +1,7 @@
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine,
 } from 'recharts';
-import { plan16, getMiles, getActualMilesForWeek } from '../lib/plan';
+import { getPlanWeek, getMiles, getActualMilesForWeek } from '../lib/plan';
 import { TOKENS } from '../lib/colors';
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -23,14 +23,17 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function MileageChart({ runs, currentWeek }) {
-  const data = plan16.map(w => ({
-    week:    `W${w.week}`,
-    weekNum: w.week,
-    planned: getMiles(w),
-    actual:  parseFloat(getActualMilesForWeek(w.week, runs).toFixed(1)),
-    isRace:  w.week === 16,
-  }));
+export default function MileageChart({ runs, currentWeek, totalWeeks = 16, ability = 'intermediate' }) {
+  const data = Array.from({ length: totalWeeks }, (_, i) => {
+    const w = getPlanWeek(i + 1, totalWeeks, ability);
+    return {
+      week:    `W${w.week}`,
+      weekNum: w.week,
+      planned: getMiles(w),
+      actual:  parseFloat(getActualMilesForWeek(w.week, runs).toFixed(1)),
+      isRace:  w.week === totalWeeks,
+    };
+  });
 
   return (
     <ResponsiveContainer width="100%" height={160}>
@@ -40,7 +43,7 @@ export default function MileageChart({ runs, currentWeek }) {
           tick={{ fill: TOKENS.textMuted, fontSize: 10 }}
           axisLine={false}
           tickLine={false}
-          interval={1}
+          interval={totalWeeks > 16 ? Math.floor(totalWeeks / 8) : 1}
         />
         <YAxis
           tick={{ fill: TOKENS.textMuted, fontSize: 10 }}

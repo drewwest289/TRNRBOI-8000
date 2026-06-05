@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { db } from './db';
 import Nav from './components/Nav';
 import DashboardTab from './components/tabs/DashboardTab';
 import PlanTab from './components/tabs/PlanTab';
@@ -23,6 +24,13 @@ export default function App() {
   const [tab, setTab] = useState('dashboard');
   const [onboarded, setOnboarded] = useState(isOnboardingDone);
   const plan = useTrainingPlan();
+
+  // One-time cleanup: clear legacy Dexie runners table
+  useEffect(() => {
+    if (user && !localStorage.getItem('trnr_runners_cleared')) {
+      db.runners.clear().then(() => localStorage.setItem('trnr_runners_cleared', '1'));
+    }
+  }, [user]);
 
   if (!user) return <LoginScreen />;
   if (!onboarded) return <OnboardingFlow onComplete={() => setOnboarded(true)} />;

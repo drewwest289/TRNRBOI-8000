@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { useRuns } from '../../hooks/useRuns';
-import { useRunners } from '../../hooks/useRunners';
+import { useAuth } from '../../hooks/useAuth';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { TYPE_COLOR, CHART_COLORS, chipClass, TOKENS } from '../../lib/colors';
@@ -126,12 +126,12 @@ function resolvedType(run, overrides) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HistoryTab() {
-  const runs    = useRuns();
-  const runners = useRunners();
-  const [overrides,    setOverrides]    = useState(loadOverrides);
-  const [activeRun,    setActiveRun]    = useState(null);
+  const runs               = useRuns();
+  const { user: authUser } = useAuth();
+  const [overrides,  setOverrides]  = useState(loadOverrides);
+  const [activeRun,  setActiveRun]  = useState(null);
 
-  const defaultUser = runners[0]?.name || 'Drew';
+  const defaultUser = authUser?.name || 'Me';
 
   const weeklyData = weeklyMileageData(runs);
   const paceData   = paceTrendData(runs);

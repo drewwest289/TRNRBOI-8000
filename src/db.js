@@ -19,9 +19,3 @@ db.version(3).stores({
   planOverrides: '&date',
 });
 
-db.on('ready', async () => {
-  const count = await db.runners.count();
-  if (count === 0) {
-    await db.runners.add({ name: 'Drew', initials: 'DR', color: '#1D9E75' });
-  }
-});

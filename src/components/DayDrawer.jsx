@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { X, Trash2, Pencil } from '../icons/PixelIcons';
 import ActivityDetailModal from './ActivityDetailModal';
-import { useRunners } from '../hooks/useRunners';
+import { useAuth } from '../hooks/useAuth';
 import { addRun, deleteRun } from '../hooks/useRuns';
 import { setPlanOverride } from '../hooks/usePlanOverrides';
 import { paceStr } from '../lib/pace';
@@ -342,8 +342,8 @@ function PlanRunForm({ dateStr, planType, plannedMi, onSave, onCancel }) {
  *   onClose  — close callback
  */
 export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
-  const runners    = useRunners();
-  const defaultUser = runners[0]?.name || 'Drew';
+  const { user }    = useAuth();
+  const defaultUser = user?.name || 'Me';
 
   const planType    = getDayType(dayStr);   // e.g. 'easy'
   const plannedMi   = getDayMiles(dayStr);  // e.g. 3

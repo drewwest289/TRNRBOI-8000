@@ -3,7 +3,7 @@ import { apiFetch } from './api';
 const stravaFetch = (path) => apiFetch(`/api/strava${path}`);
 
 export const fetchStravaAthlete    = ()         => stravaFetch('/athlete');
-export const fetchStravaActivities = (n = 15)   => stravaFetch(`/activities?per_page=${n}`);
+export const fetchStravaActivities = (n = 25, page = 1) => stravaFetch(`/activities?per_page=${n}&page=${page}`);
 export const fetchStravaStreams     = (id)       => stravaFetch(`/activities/${id}/streams`);
 export const fetchStravaActivity   = (id)       => stravaFetch(`/activities/${id}?include_all_efforts=true`);
 export const fetchStravaStreamsAll  = (id)       => stravaFetch(`/activities/${id}/streams?keys=time,distance,heartrate,cadence,altitude,velocity_smooth&key_by_type=true`);

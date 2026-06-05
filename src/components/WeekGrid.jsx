@@ -1,4 +1,4 @@
-import { DAY_NAMES, getDayType, getDayMiles, getDateForCell, getLogsForDate, plan16 } from '../lib/plan';
+import { DAY_NAMES, getDayType, getDayMiles, getDateForCell, getLogsForDate, getPlanWeek } from '../lib/plan';
 import { TYPE_COLOR, TYPE_BG, TOKENS } from '../lib/colors';
 import { PixelIcon } from '../icons/PixelIcons';
 
@@ -23,8 +23,8 @@ function getTodayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function WeekGrid({ week, runs, onDayClick, planOverrides = {} }) {
-  const weekData = plan16[week - 1];
+export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, totalWeeks = 16, ability = 'intermediate' }) {
+  const weekData = getPlanWeek(week, totalWeeks, ability);
   const todayStr = getTodayStr();
 
   return (
