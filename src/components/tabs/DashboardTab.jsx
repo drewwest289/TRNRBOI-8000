@@ -4,6 +4,7 @@ import { RefreshCw, Users } from '../../icons/PixelIcons';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS, TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
+import { apiFetch } from '../../lib/api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -32,12 +33,7 @@ function formatPaceFromMps(mps) {
 }
 
 async function fetchAllActivities() {
-  const res = await fetch('/api/strava/activities/all');
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
-  }
-  return res.json();
+  return apiFetch('/api/strava/activities/all');
 }
 
 // ── Derived data ──────────────────────────────────────────────────────────────
