@@ -492,6 +492,95 @@ app.get('/api/strava/athlete', async (req, res) => {
   }
 });
 
+// ── Phase 4: per-user CRUD ────────────────────────────────────────────────────
+
+// Plan settings (start date + race date)
+app.get('/api/plan/settings', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('plan_settings')
+    .select('start_date, race_date')
+    .eq('user_id', req.user.id)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data ?? { start_date: null, race_date: null });
+});
+
+app.put('/api/plan/settings', requireAuth, async (req, res) => {
+  const { start_date, race_date } = req.body;
+  const { error } = await supabase
+    .from('plan_settings')
+    .upsert({ user_id: req.user.id, start_date: start_date ?? null, race_date: race_date ?? null },
+            { onConflict: 'user_id' });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// Plan overrides (per-day schedule edits)
+app.get('/api/plan/overrides', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('plan_overrides')
+    .select('date, day_str')
+    .eq('user_id', req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data ?? []);
+});
+
+app.put('/api/plan/overrides/:date', requireAuth, async (req, res) => {
+  const { date } = req.params;
+  const { day_str } = req.body;
+  if (!day_str) return res.status(400).json({ error: 'day_str required' });
+  const { error } = await supabase
+    .from('plan_overrides')
+    .upsert({ user_id: req.user.id, date, day_str }, { onConflict: 'user_id,date' });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+app.delete('/api/plan/overrides/:date', requireAuth, async (req, res) => {
+  const { error } = await supabase
+    .from('plan_overrides')
+    .delete()
+    .eq('user_id', req.user.id)
+    .eq('date', req.params.date);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// Runs
+app.get('/api/runs', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('runs')
+    .select('id, date, dist, dur, type, notes, strava_id')
+    .eq('user_id', req.user.id)
+    .order('date', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data ?? []);
+});
+
+app.post('/api/runs', requireAuth, async (req, res) => {
+  const { date, dist, dur, type, notes, strava_id } = req.body;
+  if (!date || dist == null || dur == null) {
+    return res.status(400).json({ error: 'date, dist, and dur are required' });
+  }
+  const { data, error } = await supabase
+    .from('runs')
+    .insert({ user_id: req.user.id, date, dist: parseFloat(dist), dur: parseInt(dur), type, notes, strava_id: strava_id ?? null })
+    .select('id')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, id: data.id });
+});
+
+app.delete('/api/runs/:id', requireAuth, async (req, res) => {
+  const { error } = await supabase
+    .from('runs')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 // ── Health checks ─────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, queueLength: readQueue().length }));

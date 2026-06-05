@@ -31,6 +31,22 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
+      # ── Supabase ────────────────────────────────────────────────────────────
+      # Project URL and service_role key — Supabase dashboard → Settings → API.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # ── Auth ────────────────────────────────────────────────────────────────
+      # Any long random string — used to sign JWTs.
+      - key: JWT_SECRET
+        sync: false
+      # Full URL of the frontend (Cloudflare Pages or localhost).
+      # After successful OAuth the server redirects here with ?token=...
+      - key: FRONTEND_URL
+        sync: false
+
       # ── Strava OAuth ────────────────────────────────────────────────────────
       # Set these in the Render dashboard — do NOT commit real values here.
       # Get them from https://www.strava.com/settings/api

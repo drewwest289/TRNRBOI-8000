@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from '../../icons/PixelIcons';
-import { db } from '../../db';
-import { useRuns } from '../../hooks/useRuns';
+import { useRuns, addRun, deleteRun } from '../../hooks/useRuns';
 import { useRunners } from '../../hooks/useRunners';
 import { paceStr } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
@@ -42,7 +41,7 @@ export default function LogTab() {
     }
     const user = form.user || runners[0]?.name || 'Drew';
     try {
-      await db.runs.add({ user, date: form.date, dist, dur, type: form.type, notes: form.notes });
+      await addRun({ user, date: form.date, dist, dur, type: form.type, notes: form.notes });
       setForm(f => ({ ...f, dist: '', dur: '', notes: '' }));
       setFeedback('ok');
       setTimeout(() => setFeedback(''), 2000);
@@ -53,7 +52,7 @@ export default function LogTab() {
 
   async function handleDelete(id) {
     if (!confirm('Delete this run?')) return;
-    await db.runs.delete(id);
+    await deleteRun(id);
   }
 
   return (

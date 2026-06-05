@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { RefreshCw, Activity, PixelIcon } from '../icons/PixelIcons';
 import ActivityDetailModal from './ActivityDetailModal';
-import { db } from '../db';
+import { useRuns, addRun } from '../hooks/useRuns';
 import { paceStr } from '../lib/pace';
 import { TYPE_COLOR, chipClass, TOKENS } from '../lib/colors';
 import {
@@ -24,15 +24,13 @@ const TYPE_GLYPH = {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-async function checkDupe(w) {
+function checkDupe(w, existingRuns) {
   if (!w.date) return { ...w, _status: 'invalid' };
-  const onDate = await db.runs.where('date').equals(w.date).toArray();
+  const onDate = existingRuns.filter(r => r.date === w.date);
   let isDupe;
   if (w.distMi) {
-    // Distance-based activities: match on distance
     isDupe = onDate.some(r => Math.abs(r.dist - w.distMi) < 0.01);
   } else {
-    // Zero-distance (HIIT, cross-train with no GPS): match on duration within 2 min
     isDupe = onDate.some(r => r.dist === 0 && Math.abs(r.dur - w.durMin) <= 2);
   }
   return { ...w, _status: isDupe ? 'duplicate' : 'new' };
@@ -44,14 +42,14 @@ async function importToDb(activities, selected, user) {
     if (!selected.has(i)) continue;
     const a = activities[i];
     if (a._status !== 'new') { dupes++; continue; }
-    await db.runs.add({
+    await addRun({
       user,
       date:     a.date,
       dist:     a.distMi,
       dur:      a.durMin,
       type:     a.type,
       notes:    a.hr ? `Avg HR ${a.hr} bpm` : '',
-      stravaId: a.stravaId || null,
+      strava_id: a.stravaId || null,
     });
     imported++;
   }
@@ -142,6 +140,7 @@ const COLLAPSED_KEY     = 'strava-activities-collapsed';
 const SHOW_IMPORTED_KEY = 'strava-activities-show-imported';
 
 export function StravaActivitiesCard({ defaultUser }) {
+  const existingRuns = useRuns();
   const [phase,        setPhase]        = useState('loading'); // loading | ready | importing | done | error | disconnected
   const [activities,   setActivities]   = useState([]);
   const [selected,     setSelected]     = useState(new Set());
@@ -173,7 +172,7 @@ export function StravaActivitiesCard({ defaultUser }) {
     try {
       const raw        = await fetchStravaActivities(15);
       const normalized = raw.map(normalizeStravaActivity);
-      const annotated  = await Promise.all(normalized.map(checkDupe));
+      const annotated  = normalized.map(w => checkDupe(w, existingRuns));
       setActivities(annotated);
       // Pre-select new activities; still allow toggling duplicates manually.
       setSelected(new Set(
