@@ -39,12 +39,12 @@ async function fetchAllActivities() {
 // ── Derived data ──────────────────────────────────────────────────────────────
 
 const PR_TARGETS = [
-  { name: '400m',          targetM: 400,   rangeM: [340,   500],   goalSecs: 60,   goalLabel: 'sub-1:00',   paceUnit: 'km' },
-  { name: '1K',            targetM: 1000,  rangeM: [900,  1200],   goalSecs: 210,  goalLabel: 'sub-3:30',   paceUnit: 'km' },
-  { name: '1 Mile',        targetM: 1609,  rangeM: [1300,  1900],  goalSecs: 360,  goalLabel: 'sub-6:00',   paceUnit: 'mi' },
-  { name: '5K',            targetM: 5000,  rangeM: [4750,  5400],  goalSecs: 1500, goalLabel: 'sub-25:00',  paceUnit: 'mi' },
-  { name: '10K',           targetM: 10000, rangeM: [9500, 10800],  goalSecs: 3000, goalLabel: 'sub-50:00',  paceUnit: 'mi' },
-  { name: 'Half Marathon', targetM: 21097, rangeM: [19800, 22500], goalSecs: 7200, goalLabel: 'sub-2:00:00',paceUnit: 'mi' },
+  { name: '400m',          targetM: 400,   goalSecs: 60,   goalLabel: 'sub-1:00',    paceUnit: 'km' },
+  { name: '1K',            targetM: 1000,  goalSecs: 210,  goalLabel: 'sub-3:30',    paceUnit: 'km' },
+  { name: '1 Mile',        targetM: 1609,  goalSecs: 360,  goalLabel: 'sub-6:00',    paceUnit: 'mi' },
+  { name: '5K',            targetM: 5000,  goalSecs: 1500, goalLabel: 'sub-25:00',   paceUnit: 'mi' },
+  { name: '10K',           targetM: 10000, goalSecs: 3000, goalLabel: 'sub-50:00',   paceUnit: 'mi' },
+  { name: 'Half Marathon', targetM: 21097, goalSecs: 7200, goalLabel: 'sub-2:00:00', paceUnit: 'mi' },
 ];
 
 function formatPacePerKm(mps) {
@@ -57,15 +57,22 @@ function formatPacePerKm(mps) {
 
 function computePRs(activities) {
   const today = Date.now();
-  return PR_TARGETS.map(({ name, rangeM, goalSecs, goalLabel, paceUnit }) => {
+  return PR_TARGETS.map(({ name, targetM, goalSecs, goalLabel, paceUnit }) => {
+    // Include any run at least as long as the target distance.
+    // Sort by best average speed (fastest pace) so longer runs that were run
+    // at a faster pace beat shorter slower ones.
     const runs = activities.filter(a => {
       const sport = (a.sport_type || a.type || '').toLowerCase();
-      return sport === 'run' && a.distance >= rangeM[0] && a.distance <= rangeM[1] && a.elapsed_time > 0;
+      return sport === 'run' && a.distance >= targetM * 0.95 && a.elapsed_time > 0 && a.average_speed > 0;
     });
     if (!runs.length) return { name, time: null, date: null, pace: null, elapsedSecs: null, top3: [], goalSecs, goalLabel };
 
-    const sorted = [...runs].sort((a, b) => a.elapsed_time - b.elapsed_time);
+    // Best = fastest average speed (proxy for best pace at that distance).
+    const sorted = [...runs].sort((a, b) => b.average_speed - a.average_speed);
     const best = sorted[0];
+
+    // Estimate time over the target distance at the best pace.
+    const estSecs = Math.round(targetM / best.average_speed);
     const daysSincePR = best.start_date_local
       ? Math.floor((today - new Date(best.start_date_local).getTime()) / 86400000)
       : null;
@@ -76,13 +83,13 @@ function computePRs(activities) {
 
     return {
       name,
-      time:        formatDuration(best.elapsed_time),
-      elapsedSecs: best.elapsed_time,
+      time:        formatDuration(estSecs),
+      elapsedSecs: estSecs,
       date:        best.start_date_local?.slice(0, 10) ?? null,
       daysSincePR,
       pace:        paceStr,
       top3: sorted.slice(0, 3).map(a => ({
-        time: formatDuration(a.elapsed_time),
+        time: formatDuration(Math.round(targetM / a.average_speed)),
         date: a.start_date_local?.slice(0, 10) ?? null,
         pace: paceUnit === 'km'
           ? `${formatPacePerKm(a.average_speed)}/km`
