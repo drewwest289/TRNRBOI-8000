@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Settings } from '../../icons/PixelIcons';
 import { useRuns } from '../../hooks/useRuns';
 import { usePlanOverrides } from '../../hooks/usePlanOverrides';
-import { plan16, getMiles, getActualMilesForWeek } from '../../lib/plan';
+import { getPlanWeek, getMiles, getActualMilesForWeek } from '../../lib/plan';
 import { TOKENS } from '../../lib/colors';
 import WeekGrid from '../WeekGrid';
 import MileageChart from '../MileageChart';
@@ -36,7 +36,7 @@ function MetricCard({ label, value, sub, accent }) {
  * plan: { startStr, raceStr, currentWeek, daysUntilRace, saveStart, saveRace }
  */
 export default function PlanTab({ plan }) {
-  const { startStr, raceStr, currentWeek, saveStart, saveRace } = plan;
+  const { startStr, raceStr, currentWeek, totalWeeks, ability, saveStart, saveRace } = plan;
 
   // `week` is the week currently being *viewed* — starts at the calculated
   // current week, but the user can navigate away with the arrows.
@@ -56,7 +56,12 @@ export default function PlanTab({ plan }) {
     const start = new Date(newStart + 'T00:00:00');
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const days  = Math.floor((today - start) / 86_400_000);
-    const newWeek = Math.min(16, Math.max(1, Math.floor(days / 7) + 1));
+    let newTotal = 16;
+    if (newRace) {
+      const daysToRace = Math.ceil((new Date(newRace + 'T00:00:00') - today) / 86_400_000);
+      if (daysToRace > 0) newTotal = Math.max(16, Math.ceil(daysToRace / 7));
+    }
+    const newWeek = Math.min(newTotal, Math.max(1, Math.floor(days / 7) + 1));
     setWeek(newWeek);
     setShowSettings(false);
   }
@@ -86,14 +91,15 @@ export default function PlanTab({ plan }) {
 
   // ── Plan configured ───────────────────────────────────────────────────────
 
-  const weekData       = plan16[week - 1];
+  const weekData       = getPlanWeek(week, totalWeeks, ability);
   const planned        = getMiles(weekData);
   // Metric cards use the *current* week's data, not the viewed week.
-  const currentWeekData   = plan16[(currentWeek ?? 1) - 1];
+  const currentWeekData   = getPlanWeek(currentWeek ?? 1, totalWeeks, ability);
   const currentPlanned    = getMiles(currentWeekData);
   const currentActual     = getActualMilesForWeek(currentWeek ?? 1, runs);
   const total             = runs.reduce((s, r) => s + r.dist, 0);
-  const plannedThru       = plan16.slice(0, currentWeek ?? 1).reduce((s, w) => s + getMiles(w), 0);
+  const plannedThru       = Array.from({ length: currentWeek ?? 1 }, (_, i) => getPlanWeek(i + 1, totalWeeks, ability))
+    .reduce((s, w) => s + getMiles(w), 0);
   const completion        = plannedThru > 0
     ? Math.min(100, Math.round((total / plannedThru) * 100))
     : 0;
@@ -115,7 +121,7 @@ export default function PlanTab({ plan }) {
         <MetricCard
           label="Current week"
           value={currentWeek}
-          sub="of 16"
+          sub={`of ${totalWeeks}`}
         />
         <MetricCard
           label="This week"
@@ -173,8 +179,8 @@ export default function PlanTab({ plan }) {
             </span>
             <button
               className="btn-icon"
-              onClick={() => setWeek(w => Math.min(16, w + 1))}
-              disabled={week === 16}
+              onClick={() => setWeek(w => Math.min(totalWeeks, w + 1))}
+              disabled={week === totalWeeks}
             >
               <ChevronRight size={14} />
             </button>
@@ -185,6 +191,8 @@ export default function PlanTab({ plan }) {
           week={week}
           runs={runs}
           planOverrides={planOverrides}
+          totalWeeks={totalWeeks}
+          ability={ability}
           onDayClick={(dateStr, dayStr, logs) => setDrawerDay({ dateStr, dayStr, logs })}
         />
 
@@ -204,10 +212,10 @@ export default function PlanTab({ plan }) {
         </div>
       </div>
 
-      {/* 16-week overview chart */}
+      {/* Mileage overview chart */}
       <div className="card">
         <div className="flex items-center justify-between mb-3">
-          <div className="section-label mb-0">16-week mileage overview</div>
+          <div className="section-label mb-0">{totalWeeks}-week mileage overview</div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-2" style={{ backgroundColor: 'rgba(124,255,158,0.25)' }} />
@@ -219,7 +227,7 @@ export default function PlanTab({ plan }) {
             </div>
           </div>
         </div>
-        <MileageChart runs={runs} currentWeek={week} />
+        <MileageChart runs={runs} currentWeek={week} totalWeeks={totalWeeks} ability={ability} />
       </div>
 
       {/* Day detail drawer */}

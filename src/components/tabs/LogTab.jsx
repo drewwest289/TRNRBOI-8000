@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2 } from '../../icons/PixelIcons';
 import { useRuns, addRun, deleteRun } from '../../hooks/useRuns';
-import { useRunners } from '../../hooks/useRunners';
+import { useAuth } from '../../hooks/useAuth';
 import { paceStr } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { chipClass } from '../../lib/colors';
@@ -12,20 +12,14 @@ const RUN_TYPES = ['Easy', 'Tempo', 'Long run', 'Intervals', 'Cross-train'];
 const localToday = () => localDateStr(new Date());
 
 export default function LogTab() {
-  const runs    = useRuns();
-  const runners = useRunners();
+  const runs        = useRuns();
+  const { user: authUser } = useAuth();
 
   const [form, setForm] = useState({
-    user: '', date: localToday(), dist: '', dur: '', type: 'Easy', notes: '',
+    date: localToday(), dist: '', dur: '', type: 'Easy', notes: '',
   });
-  const [feedback,     setFeedback]     = useState('');
-  const [detailRun,    setDetailRun]    = useState(null);
-
-  useEffect(() => {
-    if (runners.length > 0 && !form.user) {
-      setForm(f => ({ ...f, user: runners[0].name }));
-    }
-  }, [runners]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [feedback,  setFeedback]  = useState('');
+  const [detailRun, setDetailRun] = useState(null);
 
   const set = (k, v) => {
     setFeedback('');
@@ -39,9 +33,9 @@ export default function LogTab() {
       setFeedback('error:Date, distance, and duration are required.');
       return;
     }
-    const user = form.user || runners[0]?.name || 'Drew';
+    const userName = authUser?.name || 'Me';
     try {
-      await addRun({ user, date: form.date, dist, dur, type: form.type, notes: form.notes });
+      await addRun({ user: userName, date: form.date, dist, dur, type: form.type, notes: form.notes });
       setForm(f => ({ ...f, dist: '', dur: '', notes: '' }));
       setFeedback('ok');
       setTimeout(() => setFeedback(''), 2000);
@@ -61,22 +55,12 @@ export default function LogTab() {
       <div className="card">
         <div className="section-label">Log a run</div>
 
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>RUNNER</label>
-            <select className="field" value={form.user} onChange={e => set('user', e.target.value)}>
-              {runners.map(r => (
-                <option key={r.name} value={r.name}>{r.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>DATE</label>
-            <input
-              type="date" className="field" value={form.date}
-              onChange={e => set('date', e.target.value)}
-            />
-          </div>
+        <div className="mb-3">
+          <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>DATE</label>
+          <input
+            type="date" className="field" value={form.date}
+            onChange={e => set('date', e.target.value)}
+          />
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-3">

@@ -61,17 +61,6 @@ export function useTrainingPlan() {
     }).catch(() => {});
   }, [startStr]);
 
-  const currentWeek = useMemo(() => {
-    if (!startStr) return null;
-    const raw = parseLocal(startStr);
-    const sunday = new Date(raw);
-    sunday.setDate(raw.getDate() - raw.getDay());
-    const today = new Date();
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const days = calendarDaysBetween(sunday, todayMidnight);
-    return Math.min(16, Math.max(1, Math.floor(days / 7) + 1));
-  }, [startStr]);
-
   const daysUntilRace = useMemo(() => {
     let raceDate;
     if (raceStr) {
@@ -90,5 +79,24 @@ export function useTrainingPlan() {
     return calendarDaysBetween(todayMidnight, raceDate);
   }, [startStr, raceStr]);
 
-  return { startStr, raceStr, currentWeek, daysUntilRace, saveStart, saveRace };
+  // Total plan weeks: at least 16, extended to cover the full period to race day.
+  const totalWeeks = useMemo(() => {
+    if (daysUntilRace == null || daysUntilRace <= 0) return 16;
+    return Math.max(16, Math.ceil(daysUntilRace / 7));
+  }, [daysUntilRace]);
+
+  const currentWeek = useMemo(() => {
+    if (!startStr) return null;
+    const raw = parseLocal(startStr);
+    const sunday = new Date(raw);
+    sunday.setDate(raw.getDate() - raw.getDay());
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const days = calendarDaysBetween(sunday, todayMidnight);
+    return Math.min(totalWeeks, Math.max(1, Math.floor(days / 7) + 1));
+  }, [startStr, totalWeeks]);
+
+  const ability = localStorage.getItem('trnr_ability') || 'intermediate';
+
+  return { startStr, raceStr, currentWeek, totalWeeks, daysUntilRace, ability, saveStart, saveRace };
 }
