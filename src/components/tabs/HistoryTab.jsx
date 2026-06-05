@@ -161,7 +161,7 @@ export default function HistoryTab() {
             distMi:   activeRun.dist,
             durMin:   activeRun.dur,
             hr:       activeRun.hr ?? (activeRun.notes?.match(/Avg HR (\d+)/)?.[1] ? parseInt(activeRun.notes.match(/Avg HR (\d+)/)[1]) : null),
-            stravaId: activeRun.stravaId ?? null,
+            stravaId: activeRun.strava_id ?? activeRun.stravaId ?? null,
           }}
           onClose={() => setActiveRun(null)}
         />
@@ -370,7 +370,7 @@ export default function HistoryTab() {
                     onClick={() => setActiveRun(r)}
                     title="View details"
                   >
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user || defaultUser}</span>
                   </button>
                   <select
                     className="text-xs rounded px-1 py-0.5 border border-slate-700 bg-slate-800 cursor-pointer"

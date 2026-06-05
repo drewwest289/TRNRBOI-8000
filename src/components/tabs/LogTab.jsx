@@ -145,7 +145,7 @@ export default function LogTab() {
                 >
                   <div className="text-xs pl-2" style={{ color: 'var(--text-muted)' }}>{r.date}</div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user || authUser?.name}</span>
                     <span className={chipClass(r.type)}>{r.type}</span>
                   </div>
                   <div className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
