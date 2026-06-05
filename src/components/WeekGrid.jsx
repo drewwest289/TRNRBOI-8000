@@ -114,8 +114,9 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {} })
               </div>
             )}
             {hasRestLog && (
-              <div className="text-xs font-bold mt-1" style={{ color: TOKENS.textMuted }}>
-                —
+              <div className="flex flex-col items-center mt-1 gap-0.5">
+                <PixelIcon name="close" size={10} color={TOKENS.textMuted} />
+                <span className="text-xs font-bold" style={{ color: TOKENS.textMuted }}>skipped</span>
               </div>
             )}
           </div>
