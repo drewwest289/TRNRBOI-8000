@@ -1,18 +1,16 @@
 import { useState } from 'react';
-import { Watch, Upload, ChevronDown, ChevronUp } from 'lucide-react';
-import { RefreshCw } from '../../icons/PixelIcons';
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  ComposedChart, Area,
+  BarChart, Bar, PieChart, Pie, Cell,
+  ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { useRuns, addRun } from '../../hooks/useRuns';
+import { useRuns } from '../../hooks/useRuns';
 import { useRunners } from '../../hooks/useRunners';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
-import { parseHAEJson } from '../../lib/normalize';
 import { TYPE_COLOR, CHART_COLORS, chipClass, TOKENS } from '../../lib/colors';
 import { StravaStatsCard, StravaActivitiesCard } from '../StravaCards';
+import ActivityDetailModal from '../ActivityDetailModal';
 
 // ── Chart data helpers ────────────────────────────────────────────────────────
 
@@ -105,399 +103,24 @@ const PaceHRTooltip = ({ active, payload }) => {
   );
 };
 
-// ── Shared sync helpers ───────────────────────────────────────────────────────
+// ── Workout type override (localStorage) ─────────────────────────────────────
 
-/**
- * Annotate each normalised workout with its Dexie duplicate status.
- * Returns the same array with an added `_status` field:
- *   'new'       — safe to import
- *   'duplicate' — a run with the same date ± 0.01 mi already exists in Dexie
- *   'invalid'   — missing distMi or date, cannot be imported
- */
-function resolveWorkouts(rawList, existingRuns) {
-  return rawList.map(w => {
-    if (!w.distMi || !w.date) return { ...w, _status: 'invalid' };
-    const dist   = parseFloat(w.distMi.toFixed(2));
-    const onDate = existingRuns.filter(r => r.date === w.date);
-    const isDupe = onDate.some(r => Math.abs(r.dist - dist) < 0.01);
-    return { ...w, _status: isDupe ? 'duplicate' : 'new' };
-  });
+const TYPE_OPTIONS = ['Easy', 'Moderate', 'Hard', 'Long run', 'Race', 'Tempo', 'Intervals', 'Cross-train'];
+const LS_KEY = 'trnr_type_overrides';
+
+function loadOverrides() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
 }
 
-/**
- * Write the selected workouts to Dexie.
- * Respects the _status field — skips duplicates and invalids even if selected.
- * Returns { imported, dupes, invalid } counts.
- */
-async function commitImports(workouts, selected, defaultUser) {
-  let imported = 0, dupes = 0, invalid = 0;
-  for (let i = 0; i < workouts.length; i++) {
-    if (!selected.has(i)) continue;
-    const w = workouts[i];
-    if (w._status === 'invalid')   { invalid++; continue; }
-    if (w._status === 'duplicate') { dupes++;   continue; }
-    await addRun({
-      user:  defaultUser,
-      date:  w.date,
-      dist:  parseFloat(w.distMi.toFixed(2)),
-      dur:   w.durMin,
-      type:  w.type || 'Easy',
-      notes: w.hr ? `Avg HR ${w.hr} bpm` : '',
-    });
-    imported++;
-  }
-  return { imported, dupes, invalid };
+function saveOverride(runId, type) {
+  const overrides = loadOverrides();
+  overrides[runId] = type;
+  localStorage.setItem(LS_KEY, JSON.stringify(overrides));
 }
 
-// ── Shared workout preview list ───────────────────────────────────────────────
-
-function WorkoutList({ workouts, selected, onToggle }) {
-  if (!workouts.length) return null;
-  return (
-    <div className="space-y-1.5 mt-3">
-      {workouts.map((w, i) => {
-        const isDupe    = w._status === 'duplicate';
-        const isInvalid = w._status === 'invalid';
-        const checked   = selected.has(i);
-        const color     = TYPE_COLOR[w.type] || '#64748b';
-        const pace      = w.distMi && w.durMin ? paceStr(w.distMi, w.durMin) : null;
-        const disabled  = isDupe || isInvalid;
-
-        return (
-          <label
-            key={i}
-            className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
-              disabled
-                ? 'border-slate-800 opacity-50 cursor-default'
-                : checked
-                ? 'border-slate-600 bg-slate-800 cursor-pointer'
-                : 'border-slate-800 bg-slate-900 hover:bg-slate-800/60 cursor-pointer'
-            }`}
-          >
-            <input
-              type="checkbox"
-              className="mt-0.5 accent-emerald-500 cursor-pointer"
-              checked={checked}
-              disabled={disabled}
-              onChange={() => !disabled && onToggle(i)}
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-white">{w.name}</span>
-                <span className={chipClass(w.type)}>{w.type}</span>
-                {isDupe && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-900/30 text-amber-500">
-                    already in log
-                  </span>
-                )}
-                {isInvalid && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-500">
-                    no distance
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                {w.date}
-                {w.distMi  ? ` · ${w.distMi.toFixed(2)} mi` : ''}
-                {pace       ? ` · ${pace}/mi`                : ''}
-                {w.durMin   ? ` · ${w.durMin} min`           : ''}
-                {w.hr       ? ` · ${w.hr} bpm avg`           : ''}
-              </div>
-            </div>
-          </label>
-        );
-      })}
-    </div>
-  );
-}
-
-function ImportActions({ workouts, selected, onToggle, onSelectNew, onSelectAll, onImport, onCancel, note }) {
-  const selectableCount = workouts.filter(w => w._status === 'new').length;
-  const selectedNew     = [...selected].filter(i => workouts[i]?._status === 'new').length;
-  return (
-    <>
-      <div className="flex items-center gap-2 mt-4 flex-wrap">
-        <button className="btn" onClick={onImport} disabled={selectedNew === 0}>
-          Import {selectedNew > 0 ? selectedNew : ''}
-          {selectedNew !== 1 ? ' workouts' : ' workout'}
-        </button>
-        {selectableCount > 1 && (
-          <button className="btn-ghost text-xs" onClick={onSelectNew}>
-            Select new only
-          </button>
-        )}
-        <button className="btn-ghost text-xs" onClick={onSelectAll}>Select all</button>
-        <button className="btn-ghost text-xs" onClick={onCancel}>Cancel</button>
-      </div>
-      {note && <p className="text-xs text-slate-600 mt-2">{note}</p>}
-    </>
-  );
-}
-
-function ImportResult({ result, onReset, resetLabel = 'Sync again' }) {
-  return (
-    <div className="mt-3 text-xs space-y-1">
-      {result.imported > 0 && (
-        <p className="text-emerald-400">
-          ✓ {result.imported} workout{result.imported !== 1 ? 's' : ''} imported
-        </p>
-      )}
-      {result.dupes > 0 && (
-        <p className="text-slate-500">{result.dupes} already in log (skipped)</p>
-      )}
-      {result.invalid > 0 && (
-        <p className="text-slate-500">{result.invalid} had no distance data (skipped)</p>
-      )}
-      {result.imported === 0 && result.dupes === 0 && result.invalid === 0 && (
-        <p className="text-slate-500">Nothing to import.</p>
-      )}
-      <button className="btn-ghost text-xs mt-2" onClick={onReset}>{resetLabel}</button>
-    </div>
-  );
-}
-
-// ── Apple Watch server sync ───────────────────────────────────────────────────
-// Phases: idle → fetching → preview → importing → done | error
-
-function WatchSyncCard({ defaultUser }) {
-  const existingRuns = useRuns();
-  const [phase,    setPhase]    = useState('idle');
-  const [workouts, setWorkouts] = useState([]);
-  const [selected, setSelected] = useState(new Set());
-  const [result,   setResult]   = useState(null);
-  const [errMsg,   setErrMsg]   = useState('');
-
-  function toggleItem(i) {
-    setSelected(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; });
-  }
-  function selectNew()  { setSelected(new Set(workouts.map((w, i) => w._status === 'new' ? i : -1).filter(i => i >= 0))); }
-  function selectAll()  { setSelected(new Set(workouts.map((_, i) => i))); }
-
-  async function check() {
-    setPhase('fetching');
-    setErrMsg('');
-    try {
-      const res = await fetch('/api/workouts/pending');
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const raw = await res.json();
-      if (raw.length === 0) {
-        setResult({ imported: 0, dupes: 0, invalid: 0 });
-        setPhase('done');
-        return;
-      }
-      const annotated = resolveWorkouts(raw, existingRuns);
-      setWorkouts(annotated);
-      setSelected(new Set(annotated.map((w, i) => w._status === 'new' ? i : -1).filter(i => i >= 0)));
-      setPhase('preview');
-    } catch (e) {
-      setErrMsg(`Could not reach API server — is it running? (${e.message})`);
-      setPhase('error');
-    }
-  }
-
-  async function doImport() {
-    setPhase('importing');
-    try {
-      const res = await commitImports(workouts, selected, defaultUser);
-      // Only clear the server queue if at least something was processed
-      if (res.imported > 0 || res.dupes > 0 || res.invalid > 0) {
-        await fetch('/api/workouts/pending', { method: 'DELETE' });
-      }
-      setResult(res);
-      setPhase('done');
-    } catch (e) {
-      setErrMsg(`Import failed: ${e.message}`);
-      setPhase('error');
-    }
-  }
-
-  function reset() {
-    setPhase('idle'); setWorkouts([]); setSelected(new Set());
-    setResult(null);  setErrMsg('');
-  }
-
-  return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Watch size={16} className="text-slate-400" />
-          <span className="section-label mb-0">Apple Watch sync</span>
-        </div>
-        <div>
-          {(phase === 'idle' || phase === 'error') && (
-            <button className="btn-ghost text-xs" onClick={check}>
-              <RefreshCw size={12} /> Check for workouts
-            </button>
-          )}
-          {phase === 'done' && (
-            <button className="btn-ghost text-xs" onClick={reset}>
-              <RefreshCw size={12} /> Sync again
-            </button>
-          )}
-          {phase === 'fetching' && (
-            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-              <RefreshCw size={12} className="animate-spin" /> Checking…
-            </span>
-          )}
-        </div>
-      </div>
-
-      <p className="text-xs text-slate-500">
-        Workouts POSTed from Apple Shortcuts to{' '}
-        <code className="text-slate-400 bg-slate-800 px-1 rounded">:3001/api/workouts</code>{' '}
-        queue here until synced.
-      </p>
-
-      {phase === 'preview' && (
-        <>
-          <WorkoutList workouts={workouts} selected={selected} onToggle={toggleItem} />
-          <ImportActions
-            workouts={workouts}
-            selected={selected}
-            onToggle={toggleItem}
-            onSelectNew={selectNew}
-            onSelectAll={selectAll}
-            onImport={doImport}
-            onCancel={reset}
-            note="The server queue clears after import — unselected items will be discarded."
-          />
-        </>
-      )}
-
-      {phase === 'importing' && (
-        <p className="text-xs text-slate-400 mt-3 flex items-center gap-1.5">
-          <RefreshCw size={12} className="animate-spin" /> Importing…
-        </p>
-      )}
-
-      {phase === 'done' && result && (
-        <ImportResult result={result} onReset={reset} />
-      )}
-
-      {phase === 'error' && (
-        <p className="text-xs text-red-400 mt-2">{errMsg}</p>
-      )}
-    </div>
-  );
-}
-
-// ── Manual JSON import ────────────────────────────────────────────────────────
-// Phases: idle → preview → importing → done | error
-
-function JsonImportCard({ defaultUser }) {
-  const existingRuns = useRuns();
-  const [open,     setOpen]     = useState(false);
-  const [phase,    setPhase]    = useState('idle');
-  const [raw,      setRaw]      = useState('');
-  const [workouts, setWorkouts] = useState([]);
-  const [selected, setSelected] = useState(new Set());
-  const [result,   setResult]   = useState(null);
-  const [errMsg,   setErrMsg]   = useState('');
-
-  function toggleItem(i) {
-    setSelected(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; });
-  }
-  function selectNew() { setSelected(new Set(workouts.map((w, i) => w._status === 'new' ? i : -1).filter(i => i >= 0))); }
-  function selectAll() { setSelected(new Set(workouts.map((_, i) => i))); }
-
-  async function parse() {
-    if (!raw.trim()) { setErrMsg('Paste some JSON first.'); return; }
-    setErrMsg('');
-    try {
-      const normalised = parseHAEJson(raw);
-      if (!normalised.length) throw new Error('No workouts found in this JSON.');
-      const annotated = resolveWorkouts(normalised, existingRuns);
-      setWorkouts(annotated);
-      setSelected(new Set(annotated.map((w, i) => w._status === 'new' ? i : -1).filter(i => i >= 0)));
-      setPhase('preview');
-    } catch (e) {
-      setErrMsg(e.message);
-    }
-  }
-
-  async function doImport() {
-    setPhase('importing');
-    try {
-      const res = await commitImports(workouts, selected, defaultUser);
-      setResult(res);
-      setPhase('done');
-    } catch (e) {
-      setErrMsg(`Import failed: ${e.message}`);
-      setPhase('idle');
-    }
-  }
-
-  function reset() {
-    setPhase('idle'); setRaw(''); setWorkouts([]);
-    setSelected(new Set()); setResult(null); setErrMsg('');
-  }
-
-  return (
-    <div className="card">
-      <button
-        className="flex items-center justify-between w-full text-left"
-        onClick={() => setOpen(o => !o)}
-      >
-        <div className="flex items-center gap-2">
-          <Upload size={16} className="text-slate-400" />
-          <span className="section-label mb-0">Import from Health Auto Export JSON</span>
-        </div>
-        {open
-          ? <ChevronUp size={14} className="text-slate-500" />
-          : <ChevronDown size={14} className="text-slate-500" />
-        }
-      </button>
-
-      {open && (
-        <div className="mt-4">
-          {(phase === 'idle') && (
-            <>
-              <p className="text-xs text-slate-500 mb-3">
-                Paste a full Health Auto Export JSON (bulk or single-workout format).
-                Runs already in your log are detected and skipped automatically.
-              </p>
-              <textarea
-                className="field font-mono text-xs resize-y mb-2"
-                rows={6}
-                placeholder={'{\n  "data": {\n    "workouts": [...]\n  }\n}'}
-                value={raw}
-                onChange={e => { setRaw(e.target.value); setErrMsg(''); }}
-              />
-              {errMsg && <p className="text-xs text-red-400 mb-2">{errMsg}</p>}
-              <button className="btn" onClick={parse}>
-                <Upload size={14} /> Parse workouts
-              </button>
-            </>
-          )}
-
-          {phase === 'preview' && (
-            <>
-              <WorkoutList workouts={workouts} selected={selected} onToggle={toggleItem} />
-              <ImportActions
-                workouts={workouts}
-                selected={selected}
-                onToggle={toggleItem}
-                onSelectNew={selectNew}
-                onSelectAll={selectAll}
-                onImport={doImport}
-                onCancel={reset}
-              />
-            </>
-          )}
-
-          {phase === 'importing' && (
-            <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-3">
-              <RefreshCw size={12} className="animate-spin" /> Importing…
-            </p>
-          )}
-
-          {phase === 'done' && result && (
-            <ImportResult result={result} onReset={reset} resetLabel="Import more" />
-          )}
-        </div>
-      )}
-    </div>
-  );
+function resolvedType(run, overrides) {
+  if (overrides[run.id]) return overrides[run.id];
+  return run.type || 'Easy';
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -505,6 +128,8 @@ function JsonImportCard({ defaultUser }) {
 export default function HistoryTab() {
   const runs    = useRuns();
   const runners = useRunners();
+  const [overrides,    setOverrides]    = useState(loadOverrides);
+  const [activeRun,    setActiveRun]    = useState(null);
 
   const defaultUser = runners[0]?.name || 'Drew';
 
@@ -518,12 +143,29 @@ export default function HistoryTab() {
     ? paceStr(runs.reduce((s, r) => s + r.dist, 0), runs.reduce((s, r) => s + r.dur, 0))
     : '--';
 
+  function handleTypeChange(run, newType) {
+    saveOverride(run.id, newType);
+    setOverrides(loadOverrides());
+  }
+
   return (
     <div>
       <StravaStatsCard />
       <StravaActivitiesCard defaultUser={defaultUser} />
-      <WatchSyncCard  defaultUser={defaultUser} />
-      <JsonImportCard defaultUser={defaultUser} />
+
+      {activeRun && (
+        <ActivityDetailModal
+          activity={{
+            name:     activeRun.notes?.match(/^(.+?)\n/)?.[1] || `${activeRun.type} · ${activeRun.date}`,
+            date:     activeRun.date,
+            distMi:   activeRun.dist,
+            durMin:   activeRun.dur,
+            hr:       activeRun.hr ?? (activeRun.notes?.match(/Avg HR (\d+)/)?.[1] ? parseInt(activeRun.notes.match(/Avg HR (\d+)/)[1]) : null),
+            stravaId: activeRun.stravaId ?? null,
+          }}
+          onClose={() => setActiveRun(null)}
+        />
+      )}
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">
@@ -708,13 +350,14 @@ export default function HistoryTab() {
         ) : (
           <div>
             {runs.map((r, idx) => {
-              const pace = paceStr(r.dist, r.dur);
+              const pace        = paceStr(r.dist, r.dur);
+              const displayType = resolvedType(r, overrides);
               return (
                 <div
                   key={r.id}
-                  className="grid gap-3 items-center"
+                  className="grid gap-2 items-center"
                   style={{
-                    gridTemplateColumns: '76px 1fr 52px 52px',
+                    gridTemplateColumns: '76px 1fr auto 52px 52px',
                     minHeight: '48px',
                     borderBottom: '1px solid var(--border)',
                     backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
@@ -722,10 +365,24 @@ export default function HistoryTab() {
                   }}
                 >
                   <div className="text-xs pl-1" style={{ color: 'var(--text-muted)' }}>{r.date}</div>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    className="flex items-center gap-2 flex-wrap text-left"
+                    onClick={() => setActiveRun(r)}
+                    title="View details"
+                  >
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user}</span>
-                    <span className={chipClass(r.type)}>{r.type}</span>
-                  </div>
+                  </button>
+                  <select
+                    className="text-xs rounded px-1 py-0.5 border border-slate-700 bg-slate-800 cursor-pointer"
+                    style={{ color: TYPE_COLOR[displayType] || 'var(--text-muted)' }}
+                    value={displayType}
+                    onChange={e => { e.stopPropagation(); handleTypeChange(r, e.target.value); }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {TYPE_OPTIONS.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                   <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{pace}/mi</div>
                   <div className="text-sm font-bold text-right pr-1" style={{ color: 'var(--text-primary)' }}>
                     {r.dist.toFixed(1)} mi

@@ -7,6 +7,7 @@ import PaceTab from './components/tabs/PaceTab';
 import TeamTab from './components/tabs/TeamTab';
 import HistoryTab from './components/tabs/HistoryTab';
 import LoginScreen from './components/LoginScreen';
+import OnboardingFlow, { isOnboardingDone } from './components/OnboardingFlow';
 import { useTrainingPlan } from './hooks/useTrainingPlan';
 import { useAuth } from './hooks/useAuth';
 
@@ -20,9 +21,11 @@ function RaceCountdown({ days }) {
 export default function App() {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState('dashboard');
+  const [onboarded, setOnboarded] = useState(isOnboardingDone);
   const plan = useTrainingPlan();
 
   if (!user) return <LoginScreen />;
+  if (!onboarded) return <OnboardingFlow onComplete={() => setOnboarded(true)} />;
 
   return (
     <div className="min-h-screen bg-slate-950">
