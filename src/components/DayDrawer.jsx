@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { X, Trash2, Pencil } from '../icons/PixelIcons';
-import { db } from '../db';
 import ActivityDetailModal from './ActivityDetailModal';
 import { useRunners } from '../hooks/useRunners';
+import { addRun, deleteRun } from '../hooks/useRuns';
+import { setPlanOverride } from '../hooks/usePlanOverrides';
 import { paceStr } from '../lib/pace';
 import { getDayType, getDayMiles, localDateStr } from '../lib/plan';
 import { TYPE_COLOR } from '../lib/colors';
@@ -290,7 +291,7 @@ function DeferView({ dateStr, dayStr, user, onSave, onCancel }) {
   );
 }
 
-/** Plan a run form — saves an override to db.planOverrides */
+/** Plan a run form — saves an override via the API */
 function PlanRunForm({ dateStr, planType, plannedMi, onSave, onCancel }) {
   const defaultType = RUN_TYPES.find(t => LOG_TO_PLAN[t] === planType) || 'Easy';
   const [type, setType] = useState(defaultType);
@@ -360,13 +361,16 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
 
   // ── DB operations ────────────────────────────────────────────────────────
 
-  async function addRun(fields) {
-    await db.runs.add({ user: defaultUser, ...fields });
+  async function handleAddRun(fields) {
+    await addRun({ user: defaultUser, ...fields });
     onClose();
   }
 
   async function saveEdit(fields) {
-    await db.runs.update(editing.id, {
+    // Delete + re-add since the API has no PATCH route.
+    await deleteRun(editing.id);
+    await addRun({
+      user: defaultUser, date: editing.date,
       dist: parseFloat(fields.dist),
       dur:  parseInt(fields.dur, 10),
       type: fields.type,
@@ -375,30 +379,28 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
     onClose();
   }
 
-  async function deleteRun(r) {
+  async function handleDeleteRun(r) {
     if (!confirm(`Delete this ${r.type.toLowerCase()} entry?`)) return;
-    await db.runs.delete(r.id);
+    await deleteRun(r.id);
     onClose();
   }
 
   async function markRest(note = '') {
-    await db.runs.add({ user: defaultUser, date: dateStr, type: 'Rest', dist: 0, dur: 0, notes: note });
+    await addRun({ user: defaultUser, date: dateStr, type: 'Rest', dist: 0, dur: 0, notes: note });
     onClose();
   }
 
   async function savePlanOverride(dayStr) {
-    await db.planOverrides.put({ date: dateStr, dayStr });
+    await setPlanOverride(dateStr, dayStr);
     onClose();
   }
 
   async function handleDefer(targetDate) {
-    // Mark original day as rest with a deferred note
-    await db.runs.add({
+    await addRun({
       user: defaultUser, date: dateStr, type: 'Rest', dist: 0, dur: 0,
       notes: `Deferred to ${shortDate(targetDate)}`,
     });
-    // Add a placeholder entry on the target date so it shows as planned
-    await db.runs.add({
+    await addRun({
       user: defaultUser, date: targetDate,
       type: PLAN_TO_LOG[planType] || 'Easy',
       dist: plannedMi || 0, dur: 0,
@@ -477,7 +479,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
             <StatsView
               logs={logs}
               onEdit={r => { setEditing(r); setView('edit'); }}
-              onDelete={deleteRun}
+              onDelete={handleDeleteRun}
               onBack={() => setView('menu')}
             />
           )}
@@ -550,7 +552,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
                 type:  PLAN_TO_LOG[planType] || 'Easy',
                 notes: '',
               }}
-              onSave={fields => addRun({ date: dateStr, ...fields })}
+              onSave={fields => handleAddRun({ date: dateStr, ...fields })}
               onCancel={() => setView('menu')}
             />
           )}
@@ -560,7 +562,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
             <CrossForm
               dateStr={dateStr}
               user={defaultUser}
-              onSave={addRun}
+              onSave={handleAddRun}
               onCancel={() => setView('menu')}
             />
           )}

@@ -6,8 +6,7 @@ import {
   ComposedChart, Area,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { db } from '../../db';
-import { useRuns } from '../../hooks/useRuns';
+import { useRuns, addRun } from '../../hooks/useRuns';
 import { useRunners } from '../../hooks/useRunners';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
@@ -115,16 +114,14 @@ const PaceHRTooltip = ({ active, payload }) => {
  *   'duplicate' — a run with the same date ± 0.01 mi already exists in Dexie
  *   'invalid'   — missing distMi or date, cannot be imported
  */
-async function resolveWorkouts(rawList) {
-  return Promise.all(
-    rawList.map(async w => {
-      if (!w.distMi || !w.date) return { ...w, _status: 'invalid' };
-      const dist    = parseFloat(w.distMi.toFixed(2));
-      const onDate  = await db.runs.where('date').equals(w.date).toArray();
-      const isDupe  = onDate.some(r => Math.abs(r.dist - dist) < 0.01);
-      return { ...w, _status: isDupe ? 'duplicate' : 'new' };
-    })
-  );
+function resolveWorkouts(rawList, existingRuns) {
+  return rawList.map(w => {
+    if (!w.distMi || !w.date) return { ...w, _status: 'invalid' };
+    const dist   = parseFloat(w.distMi.toFixed(2));
+    const onDate = existingRuns.filter(r => r.date === w.date);
+    const isDupe = onDate.some(r => Math.abs(r.dist - dist) < 0.01);
+    return { ...w, _status: isDupe ? 'duplicate' : 'new' };
+  });
 }
 
 /**
@@ -139,7 +136,7 @@ async function commitImports(workouts, selected, defaultUser) {
     const w = workouts[i];
     if (w._status === 'invalid')   { invalid++; continue; }
     if (w._status === 'duplicate') { dupes++;   continue; }
-    await db.runs.add({
+    await addRun({
       user:  defaultUser,
       date:  w.date,
       dist:  parseFloat(w.distMi.toFixed(2)),
@@ -263,6 +260,7 @@ function ImportResult({ result, onReset, resetLabel = 'Sync again' }) {
 // Phases: idle → fetching → preview → importing → done | error
 
 function WatchSyncCard({ defaultUser }) {
+  const existingRuns = useRuns();
   const [phase,    setPhase]    = useState('idle');
   const [workouts, setWorkouts] = useState([]);
   const [selected, setSelected] = useState(new Set());
@@ -287,7 +285,7 @@ function WatchSyncCard({ defaultUser }) {
         setPhase('done');
         return;
       }
-      const annotated = await resolveWorkouts(raw);
+      const annotated = resolveWorkouts(raw, existingRuns);
       setWorkouts(annotated);
       setSelected(new Set(annotated.map((w, i) => w._status === 'new' ? i : -1).filter(i => i >= 0)));
       setPhase('preview');
@@ -387,6 +385,7 @@ function WatchSyncCard({ defaultUser }) {
 // Phases: idle → preview → importing → done | error
 
 function JsonImportCard({ defaultUser }) {
+  const existingRuns = useRuns();
   const [open,     setOpen]     = useState(false);
   const [phase,    setPhase]    = useState('idle');
   const [raw,      setRaw]      = useState('');
@@ -407,7 +406,7 @@ function JsonImportCard({ defaultUser }) {
     try {
       const normalised = parseHAEJson(raw);
       if (!normalised.length) throw new Error('No workouts found in this JSON.');
-      const annotated = await resolveWorkouts(normalised);
+      const annotated = resolveWorkouts(normalised, existingRuns);
       setWorkouts(annotated);
       setSelected(new Set(annotated.map((w, i) => w._status === 'new' ? i : -1).filter(i => i >= 0)));
       setPhase('preview');
