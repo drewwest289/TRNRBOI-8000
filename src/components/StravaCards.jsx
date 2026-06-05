@@ -165,20 +165,17 @@ export function StravaActivitiesCard({ defaultUser }) {
     });
   }
 
+  // Raw normalized activities from Strava (no dupe annotation yet).
+  const [normalized, setNormalized] = useState([]);
+
   const load = useCallback(async () => {
     setPhase('loading');
     setErrMsg('');
     setDismissed(new Set());
     try {
-      const raw        = await fetchStravaActivities(15);
-      const normalized = raw.map(normalizeStravaActivity);
-      const annotated  = normalized.map(w => checkDupe(w, existingRuns));
-      setActivities(annotated);
-      // Pre-select new activities; still allow toggling duplicates manually.
-      setSelected(new Set(
-        annotated.map((a, i) => a._status !== 'invalid' ? i : -1).filter(i => i >= 0)
-      ));
-      setPhase('ready');
+      const raw  = await fetchStravaActivities(15);
+      const norm = raw.map(normalizeStravaActivity);
+      setNormalized(norm);
     } catch (e) {
       const msg = e.message || '';
       if (msg.includes('not connected') || msg.includes('OAuth')) {
@@ -191,6 +188,18 @@ export function StravaActivitiesCard({ defaultUser }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Re-annotate dupes whenever Strava activities or existing runs change.
+  // This handles the race where runs load after Strava activities.
+  useEffect(() => {
+    if (!normalized.length) return;
+    const annotated = normalized.map(w => checkDupe(w, existingRuns));
+    setActivities(annotated);
+    setSelected(new Set(
+      annotated.map((a, i) => a._status !== 'invalid' ? i : -1).filter(i => i >= 0)
+    ));
+    setPhase('ready');
+  }, [normalized, existingRuns]);
 
   function toggle(i) {
     setSelected(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; });
