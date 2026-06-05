@@ -381,10 +381,6 @@ app.get('/auth/strava/callback', async (req, res) => {
 
     if (tokenErr) throw new Error(`Supabase token upsert: ${tokenErr.message}`);
 
-    // Also keep the legacy global token file so existing Strava proxy routes
-    // continue working while we migrate them to per-user. Remove in Phase 3.
-    writeStravaTokens(tokenData);
-
     const appToken = signToken(user);
     console.log('[auth] login:', user.name, '— strava_id:', athlete.id);
 
@@ -405,29 +401,30 @@ app.get('/auth/me', requireAuth, (req, res) => {
 // Client calls this to signal logout (no server-side session to destroy; JWT is stateless).
 app.post('/auth/logout', (_req, res) => res.json({ ok: true }));
 
-// Legacy status endpoint — still works for backwards compat.
-app.get('/auth/strava/status', (_req, res) => {
-  const tokens = readStravaTokens();
-  if (!tokens) return res.json({ connected: false });
+// Legacy status endpoint — replaced by /auth/me + per-user token check.
+app.get('/auth/strava/status', requireAuth, async (req, res) => {
+  const { data } = await supabase
+    .from('strava_tokens')
+    .select('expires_at')
+    .eq('user_id', req.user.id)
+    .maybeSingle();
+  if (!data) return res.json({ connected: false });
   res.json({
-    connected:  true,
-    athleteId:  tokens.athlete?.id,
-    expiresAt:  new Date(tokens.expires_at * 1000).toISOString(),
-    needsRefresh: Date.now() >= tokens.expires_at * 1000 - 5 * 60 * 1000,
+    connected:    true,
+    expiresAt:    new Date(data.expires_at * 1000).toISOString(),
+    needsRefresh: Date.now() >= data.expires_at * 1000 - 5 * 60 * 1000,
   });
 });
 
-// ── Strava API proxy endpoints ────────────────────────────────────────────────
-// These still use the global token file during Phase 2.
-// Phase 3 will add requireAuth and pass req.user.id to stravaGet.
+// ── Strava API proxy endpoints (Phase 5: per-user auth) ──────────────────────
 
-app.get('/api/strava/activities', async (req, res) => {
+app.get('/api/strava/activities', requireAuth, async (req, res) => {
   try {
     const { per_page = 30, page = 1, before, after } = req.query;
     const params = { per_page, page };
     if (before) params.before = before;
     if (after)  params.after  = after;
-    const data = await stravaGet('/athlete/activities', params);
+    const data = await stravaGet('/athlete/activities', params, req.user.id);
     res.json(data);
   } catch (err) {
     console.error('[strava]', err.message);
@@ -435,12 +432,12 @@ app.get('/api/strava/activities', async (req, res) => {
   }
 });
 
-app.get('/api/strava/activities/all', async (req, res) => {
+app.get('/api/strava/activities/all', requireAuth, async (req, res) => {
   try {
     const all = [];
     let page = 1;
     while (all.length < 500) {
-      const batch = await stravaGet('/athlete/activities', { per_page: 200, page });
+      const batch = await stravaGet('/athlete/activities', { per_page: 200, page }, req.user.id);
       if (!batch.length) break;
       all.push(...batch);
       if (batch.length < 200) break;
@@ -453,9 +450,9 @@ app.get('/api/strava/activities/all', async (req, res) => {
   }
 });
 
-app.get('/api/strava/activities/:id', async (req, res) => {
+app.get('/api/strava/activities/:id', requireAuth, async (req, res) => {
   try {
-    const data = await stravaGet(`/activities/${req.params.id}`, { include_all_efforts: true });
+    const data = await stravaGet(`/activities/${req.params.id}`, { include_all_efforts: true }, req.user.id);
     res.json(data);
   } catch (err) {
     console.error('[strava]', err.message);
@@ -463,10 +460,10 @@ app.get('/api/strava/activities/:id', async (req, res) => {
   }
 });
 
-app.get('/api/strava/activities/:id/streams', async (req, res) => {
+app.get('/api/strava/activities/:id/streams', requireAuth, async (req, res) => {
   try {
     const keys = req.query.keys || 'heartrate,latlng,altitude,time,distance,velocity_smooth,watts';
-    const data = await stravaGet(`/activities/${req.params.id}/streams`, { keys, key_by_type: true });
+    const data = await stravaGet(`/activities/${req.params.id}/streams`, { keys, key_by_type: true }, req.user.id);
     res.json(data);
   } catch (err) {
     console.error('[strava]', err.message);
@@ -474,16 +471,11 @@ app.get('/api/strava/activities/:id/streams', async (req, res) => {
   }
 });
 
-app.get('/api/strava/athlete', async (req, res) => {
+app.get('/api/strava/athlete', requireAuth, async (req, res) => {
   try {
     const [athlete, stats] = await Promise.all([
-      stravaGet('/athlete'),
-      (async () => {
-        const tokens = readStravaTokens();
-        const id = tokens?.athlete?.id;
-        if (!id) return null;
-        return stravaGet(`/athletes/${id}/stats`);
-      })(),
+      stravaGet('/athlete', {}, req.user.id),
+      stravaGet(`/athletes/${req.user.stravaId}/stats`, {}, req.user.id),
     ]);
     res.json({ athlete, stats });
   } catch (err) {

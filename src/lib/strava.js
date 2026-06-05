@@ -1,13 +1,6 @@
-const BASE = '/api/strava';
+import { apiFetch } from './api';
 
-async function stravaFetch(path) {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
+const stravaFetch = (path) => apiFetch(`/api/strava${path}`);
 
 export const fetchStravaAthlete    = ()         => stravaFetch('/athlete');
 export const fetchStravaActivities = (n = 15)   => stravaFetch(`/activities?per_page=${n}`);
