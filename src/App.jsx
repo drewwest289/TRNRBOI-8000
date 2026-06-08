@@ -54,16 +54,19 @@ export default function App() {
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
         <header className="flex justify-between items-start mb-6">
-          <div>
-            <h1
-              className="text-white tracking-tight"
-              style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '14px', lineHeight: 1.4 }}
-            >
-              TRNRBOI 8000
-            </h1>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              16-WEEK TRAINING COMPUTER
-            </p>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="TRNRBOI 8000" style={{ width: 48, height: 48, imageRendering: 'pixelated' }} />
+            <div>
+              <h1
+                className="text-white tracking-tight"
+                style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '14px', lineHeight: 1.4 }}
+              >
+                TRNRBOI 8000
+              </h1>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                16-WEEK TRAINING COMPUTER
+              </p>
+            </div>
           </div>
           <div className="text-right">
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>RACE DAY</div>
