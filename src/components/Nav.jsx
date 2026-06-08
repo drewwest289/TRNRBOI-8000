@@ -1,9 +1,8 @@
-import { Calendar, Activity, Clock, Users, BarChart2, LayoutDashboard } from '../icons/PixelIcons';
+import { Calendar, Clock, Users, BarChart2, LayoutDashboard } from '../icons/PixelIcons';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'plan',      label: 'Plan',      Icon: Calendar },
-  { id: 'log',       label: 'Log',       Icon: Activity },
   { id: 'pace',      label: 'Stats',     Icon: Clock },
   { id: 'team',      label: 'Team',      Icon: Users },
   { id: 'history',   label: 'History',   Icon: BarChart2 },

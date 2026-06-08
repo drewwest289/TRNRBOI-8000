@@ -3,7 +3,6 @@ import { db } from './db';
 import Nav from './components/Nav';
 import DashboardTab from './components/tabs/DashboardTab';
 import PlanTab from './components/tabs/PlanTab';
-import LogTab from './components/tabs/LogTab';
 import PaceTab from './components/tabs/PaceTab';
 import TeamTab from './components/tabs/TeamTab';
 import HistoryTab from './components/tabs/HistoryTab';
@@ -90,7 +89,6 @@ export default function App() {
         <main>
           {tab === 'dashboard' && <DashboardTab />}
           {tab === 'plan'      && <PlanTab plan={plan} />}
-          {tab === 'log'       && <LogTab />}
           {tab === 'pace'      && <PaceTab />}
           {tab === 'team'      && <TeamTab />}
           {tab === 'history'   && <HistoryTab />}

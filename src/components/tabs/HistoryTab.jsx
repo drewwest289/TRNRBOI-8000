@@ -4,13 +4,21 @@ import {
   ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { useActivities, setActivityOverride, updateManualActivity, TYPE_OPTIONS } from '../../hooks/useActivities';
+import { Plus, Trash2 } from '../../icons/PixelIcons';
+import {
+  useActivities, addManualActivity, deleteManualActivity, updateManualActivity,
+  setActivityOverride, TYPE_OPTIONS,
+} from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { TYPE_COLOR, CHART_COLORS, TOKENS } from '../../lib/colors';
 import { StravaStatsCard } from '../StravaCards';
 import ActivityDetailModal from '../ActivityDetailModal';
+
+const RUN_TYPES = ['Easy', 'Tempo', 'Long run', 'Intervals', 'Cross-train'];
+
+const localToday = () => localDateStr(new Date());
 
 // ── Chart data helpers ────────────────────────────────────────────────────────
 // `type` arrives pre-resolved from /api/activities (override applied server-side),
@@ -110,6 +118,38 @@ export default function HistoryTab() {
   const activities         = useActivities();
   const { user: authUser } = useAuth();
   const [activeRun,  setActiveRun]  = useState(null);
+
+  const [form, setForm] = useState({
+    date: localToday(), dist: '', dur: '', type: 'Easy', notes: '',
+  });
+  const [logFeedback, setLogFeedback] = useState('');
+
+  const setField = (k, v) => {
+    setLogFeedback('');
+    setForm(f => ({ ...f, [k]: v }));
+  };
+
+  async function handleAddRun() {
+    const dist = parseFloat(form.dist);
+    const dur  = parseInt(form.dur);
+    if (!form.date || !dist || isNaN(dist) || !dur || isNaN(dur)) {
+      setLogFeedback('error:Date, distance, and duration are required.');
+      return;
+    }
+    try {
+      await addManualActivity({ date: form.date, dist, dur, type: form.type, notes: form.notes });
+      setForm(f => ({ ...f, dist: '', dur: '', notes: '' }));
+      setLogFeedback('ok');
+      setTimeout(() => setLogFeedback(''), 2000);
+    } catch (e) {
+      setLogFeedback(`error:Could not save run: ${e.message}`);
+    }
+  }
+
+  async function handleDeleteRun(id) {
+    if (!confirm('Delete this run?')) return;
+    await deleteManualActivity(id);
+  }
 
   // Rest days are kept in the log (so a mistaken tag is easy to undo) but
   // excluded from every stat, chart, and average below.
@@ -326,6 +366,59 @@ export default function HistoryTab() {
         </>
       )}
 
+      {/* Log a run */}
+      <div className="card">
+        <div className="section-label">Log a run</div>
+
+        <div className="mb-3">
+          <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>DATE</label>
+          <input
+            type="date" className="field" value={form.date}
+            onChange={e => setField('date', e.target.value)}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>DIST (MI)</label>
+            <input type="number" className="field" placeholder="3.1" step="0.1" min="0"
+              value={form.dist} onChange={e => setField('dist', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>TIME (MIN)</label>
+            <input type="number" className="field" placeholder="30" step="1" min="0"
+              value={form.dur} onChange={e => setField('dur', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>TYPE</label>
+            <select className="field" value={form.type} onChange={e => setField('type', e.target.value)}>
+              {RUN_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>NOTES</label>
+            <input type="text" className="field" placeholder="How did it feel?"
+              value={form.notes} onChange={e => setField('notes', e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddRun()} />
+          </div>
+          <div className="flex items-end">
+            <button className="btn" onClick={handleAddRun}>
+              <Plus size={14} /> Add run
+            </button>
+          </div>
+        </div>
+
+        {logFeedback.startsWith('error:') && (
+          <p className="text-xs mt-2" style={{ color: 'var(--red)' }}>{logFeedback.slice(6)}</p>
+        )}
+        {logFeedback === 'ok' && (
+          <p className="text-xs mt-2" style={{ color: 'var(--green)' }}>Run added ✓</p>
+        )}
+      </div>
+
       {/* Full run log */}
       <div className="card">
         <div className="section-label">All runs</div>
@@ -338,9 +431,9 @@ export default function HistoryTab() {
               return (
                 <div
                   key={r.id}
-                  className="grid gap-2 items-center"
+                  className="grid gap-2 items-center group"
                   style={{
-                    gridTemplateColumns: '76px 1fr auto 52px 52px',
+                    gridTemplateColumns: '76px 1fr auto 52px 52px 28px',
                     minHeight: '48px',
                     borderBottom: '1px solid var(--border)',
                     backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
@@ -371,6 +464,16 @@ export default function HistoryTab() {
                   <div className="text-sm font-bold text-right pr-1" style={{ color: 'var(--text-primary)' }}>
                     {r.distMi.toFixed(1)} mi
                   </div>
+                  {r.source === 'manual' ? (
+                    <button
+                      onClick={() => handleDeleteRun(r.id)}
+                      className="opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                      style={{ color: 'var(--text-muted)', transition: 'none' }}
+                      aria-label="Delete run"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  ) : <span />}
                 </div>
               );
             })}
