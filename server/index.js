@@ -82,6 +82,25 @@ function normalizeHAEWorkout(w) {
   }
 }
 
+// Single source of truth for resolving a Strava activity's display type.
+// Ported from PaceTab.classifyActivity — ranked workout_type signal first,
+// then name-keyword heuristics. The merged /api/activities endpoint resolves
+// type once here so every tab agrees.
+function activityClassifier(a) {
+  const sport = (a.sport_type || a.type || '').toLowerCase();
+  if (sport !== 'run') return 'Cross-train';
+  const wt   = a.workout_type;
+  const name = (a.name || '').toLowerCase();
+  if (wt === 1) return 'Race';
+  if (wt === 2) return 'Long run';
+  if (wt === 3) return 'Tempo';
+  if (name.includes('tempo') || name.includes('threshold')) return 'Tempo';
+  if (name.includes('interval') || name.includes('hiit') || name.includes('speed')) return 'Intervals';
+  if (name.includes('long') || name.includes('lsd'))  return 'Long run';
+  if (name.includes('race') || name.includes('5k') || name.includes('10k')) return 'Race';
+  return 'Easy';
+}
+
 // ── Queue helpers ─────────────────────────────────────────────────────────────
 
 function readQueue() {
@@ -377,6 +396,128 @@ app.get('/api/strava/athlete', requireAuth, async (req, res) => {
     console.error('[strava]', err.message);
     res.status(502).json({ error: err.message });
   }
+});
+
+// ── Phase 7: merged activities (Strava + thin local overrides) ───────────────
+// Single source of truth for "what runs happened" — live Strava activities,
+// classified once here, with user corrections/local-only entries overlaid from
+// activity_overrides. Every tab reads from this so they can never disagree.
+
+app.get('/api/activities', requireAuth, async (req, res) => {
+  try {
+    const all = [];
+    let page = 1;
+    while (all.length < 500) {
+      const batch = await stravaGet('/athlete/activities', { per_page: 200, page }, req.user.id);
+      if (!batch.length) break;
+      all.push(...batch);
+      if (batch.length < 200) break;
+      page++;
+    }
+
+    const { data: overrides, error } = await supabase
+      .from('activity_overrides')
+      .select('id, strava_id, date, dist, dur, type, notes')
+      .eq('user_id', req.user.id);
+    if (error) return res.status(500).json({ error: error.message });
+
+    const overrideByStravaId = new Map(
+      (overrides || []).filter(o => o.strava_id != null).map(o => [String(o.strava_id), o])
+    );
+
+    const stravaActivities = all.map(a => {
+      const override = overrideByStravaId.get(String(a.id));
+      return {
+        id:       a.id,
+        stravaId: a.id,
+        date:     a.start_date_local ? a.start_date_local.substring(0, 10) : null,
+        distMi:   parseFloat((a.distance / 1609.34).toFixed(2)),
+        durMin:   Math.round(a.moving_time / 60),
+        hr:       a.average_heartrate ? Math.round(a.average_heartrate) : null,
+        cadence:  a.average_cadence ? Math.round(a.average_cadence * 2) : null,
+        name:     a.name || 'Activity',
+        source:   'strava',
+        raw:      a,
+        type:     (override && override.type) || activityClassifier(a),
+        notes:    (override && override.notes) || '',
+      };
+    });
+
+    const localActivities = (overrides || [])
+      .filter(o => o.strava_id == null)
+      .map(o => ({
+        id:       `local-${o.id}`,
+        stravaId: null,
+        date:     o.date,
+        distMi:   o.dist,
+        durMin:   o.dur,
+        hr:       null,
+        cadence:  null,
+        name:     o.type || 'Activity',
+        source:   'manual',
+        raw:      null,
+        type:     o.type || 'Easy',
+        notes:    o.notes || '',
+      }));
+
+    const merged = [...stravaActivities, ...localActivities]
+      .sort((x, y) => (y.date || '').localeCompare(x.date || ''));
+
+    res.json(merged);
+  } catch (err) {
+    console.error('[activities]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// Upsert a type/notes correction for a Strava-linked activity.
+app.put('/api/activities/:strava_id/override', requireAuth, async (req, res) => {
+  const stravaId = parseInt(req.params.strava_id, 10);
+  if (!Number.isFinite(stravaId)) return res.status(400).json({ error: 'invalid strava_id' });
+  const { type, notes } = req.body;
+  const { error } = await supabase
+    .from('activity_overrides')
+    .upsert(
+      { user_id: req.user.id, strava_id: stravaId, type: type ?? null, notes: notes ?? null },
+      { onConflict: 'user_id,strava_id' }
+    );
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// Create a local-only activity entry with no Strava counterpart (cross-training, rest day, etc.)
+app.post('/api/activities/manual', requireAuth, async (req, res) => {
+  const { date, dist, dur, type, notes } = req.body;
+  if (!date || dist == null || dur == null) {
+    return res.status(400).json({ error: 'date, dist, and dur are required' });
+  }
+  const { data, error } = await supabase
+    .from('activity_overrides')
+    .insert({
+      user_id:   req.user.id,
+      strava_id: null,
+      date,
+      dist:      parseFloat(dist),
+      dur:       parseInt(dur, 10),
+      type:      type || 'Easy',
+      notes:     notes || null,
+    })
+    .select('id')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, id: data.id });
+});
+
+// Remove a local-only activity entry.
+app.delete('/api/activities/manual/:id', requireAuth, async (req, res) => {
+  const { error } = await supabase
+    .from('activity_overrides')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .is('strava_id', null);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
 });
 
 // ── Phase 4: per-user CRUD ────────────────────────────────────────────────────

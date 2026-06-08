@@ -11,7 +11,7 @@ Remove the duplicate activity-tracking system. The app currently maintains two p
 - Migrate/reconcile existing manually-logged and imported `runs` rows so no history is lost
 - Audit `strava_id` matching/dedupe logic (`checkDupe` in `StravaCards.jsx`) — much of it becomes unnecessary once import is replaced by sync
 
-### Strava all-time dashboard
+### ✅ Strava all-time dashboard — Done
 Populate the existing dashboard tab with lifetime stats, personal records, and activity breakdowns pulled from the Strava API.
 - Use `GET /api/strava/athlete` for profile and lifetime totals
 - Use `GET /api/strava/activities` for aggregated breakdowns
@@ -32,7 +32,7 @@ Allow the user to mark a scheduled run as skipped and have the training plan aut
 
 ## Longer term
 
-### Multi-user support
+### ✅ Multi-user support — Done
 Open the app beyond a single user so others can use TRNR with their own Strava accounts.
 - User authentication (login/signup)
 - Per-user data isolation
