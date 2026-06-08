@@ -65,7 +65,7 @@ export function useAuth() {
   }
 
   const user = auth
-    ? { id: auth.decoded.sub, stravaId: auth.decoded.stravaId, name: auth.decoded.name }
+    ? { id: auth.decoded.sub, stravaId: auth.decoded.stravaId, name: auth.decoded.name, isAdmin: !!auth.decoded.isAdmin }
     : null;
 
   return { user, token: auth?.token ?? null, logout };

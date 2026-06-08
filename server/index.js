@@ -31,24 +31,32 @@ const JWT_TTL      = '30d';
 function signToken(user) {
   if (!JWT_SECRET) throw new Error('JWT_SECRET env var is not set');
   return jwt.sign(
-    { sub: user.id, stravaId: user.strava_id, name: user.name },
+    { sub: user.id, stravaId: user.strava_id, name: user.name, isAdmin: !!user.is_admin },
     JWT_SECRET,
     { expiresIn: JWT_TTL }
   );
 }
 
-// Middleware: verify Bearer token and attach req.user = { id, stravaId, name }
+// Middleware: verify Bearer token and attach req.user = { id, stravaId, name, isAdmin }
 function requireAuth(req, res, next) {
   if (!JWT_SECRET) return res.status(500).json({ error: 'Auth not configured (JWT_SECRET missing)' });
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const payload = jwt.verify(header.slice(7), JWT_SECRET);
-    req.user = { id: payload.sub, stravaId: payload.stravaId, name: payload.name };
+    req.user = { id: payload.sub, stravaId: payload.stravaId, name: payload.name, isAdmin: !!payload.isAdmin };
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
+}
+
+// Middleware: requireAuth + must carry the is_admin flag from the users table.
+function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin access required' });
+    next();
+  });
 }
 
 // ── HAE normalizer ────────────────────────────────────────────────────────────
@@ -309,7 +317,7 @@ app.get('/auth/strava/callback', async (req, res) => {
 
 // Returns the current user's profile from their JWT.
 app.get('/auth/me', requireAuth, (req, res) => {
-  res.json({ id: req.user.id, stravaId: req.user.stravaId, name: req.user.name });
+  res.json({ id: req.user.id, stravaId: req.user.stravaId, name: req.user.name, isAdmin: req.user.isAdmin });
 });
 
 // Client calls this to signal logout (no server-side session to destroy; JWT is stateless).
@@ -715,6 +723,69 @@ app.get('/api/team/leaderboard', requireAuth, async (req, res) => {
     res.json(leaderboard);
   } catch (err) {
     console.error('[team]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin (owner-only user management) ───────────────────────────────────────
+// Strava access tokens are valid for ~6 hours; the timestamp a token was issued
+// (expires_at - that window) is the closest signal we have to "last active",
+// since this app fetches activities live rather than running a tracked sync job.
+const STRAVA_TOKEN_TTL_SECONDS = 6 * 60 * 60;
+
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const [{ data: users, error: userErr }, { data: tokens, error: tokenErr }] = await Promise.all([
+      supabase.from('users').select('*'),
+      supabase.from('strava_tokens').select('user_id, expires_at'),
+    ]);
+    if (userErr)  return res.status(500).json({ error: userErr.message });
+    if (tokenErr) return res.status(500).json({ error: tokenErr.message });
+
+    const tokenByUser = new Map((tokens ?? []).map(t => [t.user_id, t]));
+
+    const list = (users ?? []).map(u => {
+      const token = tokenByUser.get(u.id);
+      const lastActiveAt = token
+        ? new Date((token.expires_at - STRAVA_TOKEN_TTL_SECONDS) * 1000).toISOString()
+        : null;
+      return {
+        id:          u.id,
+        name:        u.name,
+        stravaId:    u.strava_id,
+        avatarUrl:   u.avatar_url ?? null,
+        isAdmin:     !!u.is_admin,
+        joinedAt:    u.created_at ?? null,
+        lastActiveAt,
+      };
+    });
+
+    list.sort((a, b) => (b.joinedAt ?? '').localeCompare(a.joinedAt ?? ''));
+    res.json(list);
+  } catch (err) {
+    console.error('[admin/users]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  if (id === req.user.id) return res.status(400).json({ error: "Can't remove your own account" });
+
+  try {
+    // Children first — in case a table is missing an `on delete cascade` FK,
+    // this still leaves no orphaned rows. Each is a no-op if already empty.
+    for (const table of ['strava_tokens', 'activity_overrides', 'plan_settings', 'plan_overrides', 'runs']) {
+      const { error } = await supabase.from(table).delete().eq('user_id', id);
+      if (error) return res.status(500).json({ error: `${table}: ${error.message}` });
+    }
+    const { error: userErr } = await supabase.from('users').delete().eq('id', id);
+    if (userErr) return res.status(500).json({ error: userErr.message });
+
+    console.log('[admin] removed user', id, '— by', req.user.name);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin/users delete]', err.message);
     res.status(500).json({ error: err.message });
   }
 });

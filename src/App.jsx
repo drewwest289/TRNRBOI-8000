@@ -9,8 +9,21 @@ import TeamTab from './components/tabs/TeamTab';
 import HistoryTab from './components/tabs/HistoryTab';
 import LoginScreen from './components/LoginScreen';
 import OnboardingFlow, { isOnboardingDone } from './components/OnboardingFlow';
+import AdminPanel from './components/AdminPanel';
 import { useTrainingPlan } from './hooks/useTrainingPlan';
 import { useAuth } from './hooks/useAuth';
+
+// Hidden, unlisted route — reachable only by navigating to #admin directly.
+// Hash fragments never hit the server, so this needs no routing config.
+function useIsAdminRoute() {
+  const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === '#admin');
+  useEffect(() => {
+    const onHashChange = () => setIsAdminRoute(window.location.hash === '#admin');
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+  return isAdminRoute;
+}
 
 function RaceCountdown({ days }) {
   if (days === null) return <>Set start date</>;
@@ -24,6 +37,7 @@ export default function App() {
   const [tab, setTab] = useState('dashboard');
   const [onboarded, setOnboarded] = useState(isOnboardingDone);
   const plan = useTrainingPlan();
+  const isAdminRoute = useIsAdminRoute();
 
   // One-time cleanup: clear legacy Dexie runners table
   useEffect(() => {
@@ -33,6 +47,7 @@ export default function App() {
   }, [user]);
 
   if (!user) return <LoginScreen />;
+  if (isAdminRoute) return <AdminPanel user={user} />;
   if (!onboarded) return <OnboardingFlow onComplete={() => setOnboarded(true)} />;
 
   return (
