@@ -1,0 +1,17 @@
+{
+  "name": "TRNRBOI 8000",
+  "short_name": "TRNRBOI",
+  "description": "16-Week Training Computer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
