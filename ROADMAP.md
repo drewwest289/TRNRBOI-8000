@@ -39,13 +39,7 @@ Phase 2 — Admin & User Management (Requires backend work on Render)
  [x] Admin panel — protected route — Built as a hidden hash route (`#admin`, see src/App.jsx useIsAdminRoute) rather than a literal /admin path — there's no SPA-fallback (_redirects) configured for the Cloudflare Pages + custom-worker setup, and a hash never reaches the server, so this needed no routing/infra changes. Gated server-side by a new `is_admin` column on `users` (see supabase_phase9_admin.sql) carried through the JWT — not exposed in nav.
  [x] Admin panel — user list — src/components/AdminPanel.jsx calls GET /api/admin/users; shows name, avatar, Strava ID, join date, and "last active" (derived from strava_tokens.expires_at minus the ~6h Strava token TTL — the closest signal available, since the app fetches activities live rather than running a tracked sync job).
  [x] Admin panel — remove user — DELETE /api/admin/users/:id on the Render backend (server/index.js) wipes strava_tokens, activity_overrides, plan_settings, plan_overrides, runs, then the users row. Confirm dialog + self-delete guard in the UI.
- [ ] Remove test account — BLOCKED on you: run supabase_phase9_admin.sql, then `update users set is_admin = true where strava_id = <your strava id>`, redeploy the Render service, and open #admin to remove the test account.
-
- Setup needed before this works in prod:
-   1. Run supabase_phase9_admin.sql in the Supabase SQL editor (adds `is_admin` column).
-   2. Run the `update users set is_admin = true where strava_id = ...` statement for your own account (find your ID at strava.com/settings, or in your profile URL).
-   3. Redeploy the Render service so the new /api/admin/* routes go live.
-   4. Visit the app and navigate to #admin (e.g. .../trnrboi8000/#admin) while signed in as yourself.
+ [x] Remove test account — Drew confirmed (2026-06-08): admin access granted, deletion verified working end-to-end (test account removed and stayed removed). Phase 2 complete.
 
 
 Phase 3 — Richer Strava Data
