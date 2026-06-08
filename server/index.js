@@ -106,6 +106,15 @@ function activityClassifier(a) {
   if (name.includes('interval') || name.includes('hiit') || name.includes('speed')) return 'Intervals';
   if (name.includes('long') || name.includes('lsd'))  return 'Long run';
   if (name.includes('race') || name.includes('5k') || name.includes('10k')) return 'Race';
+
+  // Strava's relative effort (suffer_score) catches hard efforts that weren't
+  // explicitly named or tagged. Dividing by moving_time gives pts/minute:
+  //   Zone 2 easy ≈ 0.4/min,  Zone 3/4 threshold ≈ 0.75–1.3/min
+  // Threshold of 1.0/min requires sustained above-aerobic effort.
+  if (a.suffer_score && a.moving_time > 0) {
+    if (a.suffer_score / (a.moving_time / 60) >= 1.0) return 'Hard';
+  }
+
   return 'Easy';
 }
 

@@ -23,7 +23,8 @@
   --blue:        #4DA3FF;   /* Cross-train, data */
   --purple:      #B36BFF;   /* Long run, highlights */
   --red:         #FF5C5C;   /* HR, alerts, tempo */
-  --yellow:      #FFD44D;   /* Achievements */
+  --orange:      #FF8C42;   /* Hard efforts */
+  --yellow:      #FFD44D;   /* Achievements, race */
 
   /* Glow levels */
   --glow-low:    0 0  4px rgba(124,255,158,0.20);
@@ -140,6 +141,7 @@
   .chip-tempo   { color: var(--red);        border-color: var(--red); }
   .chip-rest    { color: var(--text-muted); border-color: var(--text-muted); }
   .chip-race    { color: var(--yellow);     border-color: var(--yellow); }
+  .chip-hard    { color: var(--orange);     border-color: var(--orange); }
 
   /* ── Input field ──────────────────────────────────────────────────────── */
   .field {
