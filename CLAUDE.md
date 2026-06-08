@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 ## Workflow
+- Commit changes locally with descriptive messages, but do not push — pushing is done manually via GitHub Desktop
 - Do not create PRs unless explicitly asked
-- Push directly to a feature branch and tell me the branch name
 - Do not install or look for gh CLI — it is not available on this machine
 - Use the GitHub API directly if any GitHub operations are needed
 
