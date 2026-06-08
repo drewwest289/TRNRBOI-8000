@@ -36,7 +36,7 @@ function MetricCard({ label, value, sub, accent }) {
  * plan: { startStr, raceStr, currentWeek, daysUntilRace, saveStart, saveRace }
  */
 export default function PlanTab({ plan }) {
-  const { startStr, raceStr, currentWeek, totalWeeks, ability, saveStart, saveRace } = plan;
+  const { startStr, raceStr, currentWeek, totalWeeks, ability, saveStart, saveRace, saveAbility } = plan;
 
   // `week` is the week currently being *viewed* — starts at the calculated
   // current week, but the user can navigate away with the arrows.
@@ -83,6 +83,8 @@ export default function PlanTab({ plan }) {
           startStr={null}
           raceStr={raceStr}
           onSave={handleSave}
+          ability={ability}
+          onAbilityChange={saveAbility}
           // No onCancel — the user must set dates before seeing the plan.
         />
       </div>
@@ -113,6 +115,8 @@ export default function PlanTab({ plan }) {
           raceStr={raceStr}
           onSave={handleSave}
           onCancel={() => setShowSettings(false)}
+          ability={ability}
+          onAbilityChange={saveAbility}
         />
       )}
 

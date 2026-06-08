@@ -9,14 +9,16 @@ import { useAuth } from '../../hooks/useAuth';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { TYPE_COLOR, CHART_COLORS, chipClass, TOKENS } from '../../lib/colors';
+import { TYPE_OPTIONS, loadOverrides, saveOverride, resolvedType } from '../../lib/runTypes';
 import { StravaStatsCard, StravaActivitiesCard } from '../StravaCards';
 import ActivityDetailModal from '../ActivityDetailModal';
 
 // ── Chart data helpers ────────────────────────────────────────────────────────
 
-function weeklyMileageData(runs) {
+function weeklyMileageData(runs, overrides) {
   const byWeek = {};
   runs.forEach(r => {
+    if (resolvedType(r, overrides) === 'Rest') return;
     const d = new Date(r.date + 'T00:00:00');
     d.setDate(d.getDate() - d.getDay());
     const key = localDateStr(d);
@@ -28,9 +30,12 @@ function weeklyMileageData(runs) {
     .map(([date, miles]) => ({ date: date.slice(5), miles: parseFloat(miles.toFixed(1)) }));
 }
 
-function paceTrendData(runs) {
+function paceTrendData(runs, overrides) {
   return [...runs]
-    .filter(r => r.dist > 0 && r.dur > 0 && r.type !== 'Cross-train')
+    .filter(r => {
+      const type = resolvedType(r, overrides);
+      return r.dist > 0 && r.dur > 0 && type !== 'Cross-train' && type !== 'Rest';
+    })
     .slice(0, 20)
     .reverse()
     .map(r => {
@@ -42,16 +47,20 @@ function paceTrendData(runs) {
         fullDate: r.date,             // YYYY-MM-DD for tooltip
         pace:     parseFloat(paceDecimal(r.dist, r.dur).toFixed(2)),
         hr:       hr != null ? hr : undefined,
-        type:     r.type,
+        type:     resolvedType(r, overrides),
         dist:     r.dist,
         dur:      r.dur,
       };
     });
 }
 
-function runTypeData(runs) {
+function runTypeData(runs, overrides) {
   const counts = {};
-  runs.forEach(r => { counts[r.type] = (counts[r.type] || 0) + 1; });
+  runs.forEach(r => {
+    const type = resolvedType(r, overrides);
+    if (type === 'Rest') return;
+    counts[type] = (counts[type] || 0) + 1;
+  });
   return Object.entries(counts).map(([type, count]) => ({ type, count }));
 }
 
@@ -103,26 +112,6 @@ const PaceHRTooltip = ({ active, payload }) => {
   );
 };
 
-// ── Workout type override (localStorage) ─────────────────────────────────────
-
-const TYPE_OPTIONS = ['Easy', 'Moderate', 'Hard', 'Long run', 'Race', 'Tempo', 'Intervals', 'Cross-train'];
-const LS_KEY = 'trnr_type_overrides';
-
-function loadOverrides() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
-}
-
-function saveOverride(runId, type) {
-  const overrides = loadOverrides();
-  overrides[runId] = type;
-  localStorage.setItem(LS_KEY, JSON.stringify(overrides));
-}
-
-function resolvedType(run, overrides) {
-  if (overrides[run.id]) return overrides[run.id];
-  return run.type || 'Easy';
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HistoryTab() {
@@ -133,18 +122,22 @@ export default function HistoryTab() {
 
   const defaultUser = authUser?.name || 'Me';
 
-  const weeklyData = weeklyMileageData(runs);
-  const paceData   = paceTrendData(runs);
-  const typeData   = runTypeData(runs);
+  // Rest days are kept in the log (so a mistaken tag is easy to undo) but
+  // excluded from every stat, chart, and average below.
+  const trainingRuns = runs.filter(r => resolvedType(r, overrides) !== 'Rest');
+
+  const weeklyData = weeklyMileageData(runs, overrides);
+  const paceData   = paceTrendData(runs, overrides);
+  const typeData   = runTypeData(runs, overrides);
   const hasHR      = paceData.some(d => d.hr != null);
 
-  const totalMiles = runs.reduce((s, r) => s + r.dist, 0);
-  const avgPace    = runs.length
-    ? paceStr(runs.reduce((s, r) => s + r.dist, 0), runs.reduce((s, r) => s + r.dur, 0))
+  const totalMiles = trainingRuns.reduce((s, r) => s + r.dist, 0);
+  const avgPace    = trainingRuns.length
+    ? paceStr(trainingRuns.reduce((s, r) => s + r.dist, 0), trainingRuns.reduce((s, r) => s + r.dur, 0))
     : '--';
 
   function handleTypeChange(run, newType) {
-    saveOverride(run.id, newType);
+    saveOverride(run, newType);
     setOverrides(loadOverrides());
   }
 
@@ -170,7 +163,7 @@ export default function HistoryTab() {
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-slate-800 rounded-xl p-4 text-center">
-          <div className="text-2xl font-semibold text-white">{runs.length}</div>
+          <div className="text-2xl font-semibold text-white">{trainingRuns.length}</div>
           <div className="text-xs text-slate-500 mt-1">Total runs</div>
         </div>
         <div className="bg-slate-800 rounded-xl p-4 text-center">
@@ -183,7 +176,7 @@ export default function HistoryTab() {
         </div>
       </div>
 
-      {runs.length > 0 && (
+      {trainingRuns.length > 0 && (
         <>
           {/* Weekly mileage */}
           <div className="card">
@@ -326,7 +319,7 @@ export default function HistoryTab() {
                 <div className="space-y-2">
                   {typeData.map((entry, i) => {
                     const color = TYPE_COLOR[entry.type] || CHART_COLORS[i % CHART_COLORS.length];
-                    const pct   = Math.round((entry.count / runs.length) * 100);
+                    const pct   = Math.round((entry.count / trainingRuns.length) * 100);
                     return (
                       <div key={entry.type} className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 flex-shrink-0" style={{ backgroundColor: color }} />
@@ -362,6 +355,7 @@ export default function HistoryTab() {
                     borderBottom: '1px solid var(--border)',
                     backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
                     padding: '0 4px',
+                    opacity: displayType === 'Rest' ? 0.5 : 1,
                   }}
                 >
                   <div className="text-xs pl-1" style={{ color: 'var(--text-muted)' }}>{r.date}</div>

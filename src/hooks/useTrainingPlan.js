@@ -3,8 +3,9 @@ import { apiFetch } from '../lib/api';
 
 // localStorage keys kept as a fast local cache so the plan is usable before
 // the API response arrives (avoids a blank flash on load).
-export const LS_START = 'trnr_startDate';
-export const LS_RACE  = 'trnr_raceDate';
+export const LS_START   = 'trnr_startDate';
+export const LS_RACE    = 'trnr_raceDate';
+export const LS_ABILITY = 'trnr_ability';
 
 function readStored(key) {
   const s = localStorage.getItem(key);
@@ -96,7 +97,12 @@ export function useTrainingPlan() {
     return Math.min(totalWeeks, Math.max(1, Math.floor(days / 7) + 1));
   }, [startStr, totalWeeks]);
 
-  const ability = localStorage.getItem('trnr_ability') || 'intermediate';
+  const [ability, setAbility] = useState(() => localStorage.getItem(LS_ABILITY) || 'intermediate');
 
-  return { startStr, raceStr, currentWeek, totalWeeks, daysUntilRace, ability, saveStart, saveRace };
+  const saveAbility = useCallback((value) => {
+    localStorage.setItem(LS_ABILITY, value);
+    setAbility(value);
+  }, []);
+
+  return { startStr, raceStr, currentWeek, totalWeeks, daysUntilRace, ability, saveStart, saveRace, saveAbility };
 }

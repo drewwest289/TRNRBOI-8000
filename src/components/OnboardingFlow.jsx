@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../lib/api';
-import { LS_RACE } from '../hooks/useTrainingPlan';
+import { LS_RACE, LS_ABILITY } from '../hooks/useTrainingPlan';
 
-const LS_ABILITY  = 'trnr_ability';
 const LS_DONE     = 'trnr_onboarding_done';
 
 export function isOnboardingDone() {

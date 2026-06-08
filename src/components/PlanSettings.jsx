@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { X } from '../icons/PixelIcons';
 
+const ABILITIES = [
+  { key: 'beginner',     label: 'Beginner' },
+  { key: 'intermediate', label: 'Intermediate' },
+  { key: 'advanced',     label: 'Advanced' },
+];
+
 function addWeeks(dateStr, n) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -12,15 +18,17 @@ function addWeeks(dateStr, n) {
 }
 
 /**
- * Inline settings card for training start date and race date.
+ * Inline settings card for training start date, race date, and skill level.
  *
  * Props:
  *   startStr  — current YYYY-MM-DD start date string, or null
  *   raceStr   — current YYYY-MM-DD race date string, or null
  *   onSave(startStr, raceStr) — called when user saves
  *   onCancel  — called when user dismisses (omit to hide cancel button, e.g. on first setup)
+ *   ability   — current ability key ('beginner' | 'intermediate' | 'advanced'), or null to hide the field
+ *   onAbilityChange(key) — called immediately when the user picks a different level
  */
-export default function PlanSettings({ startStr, raceStr, onSave, onCancel }) {
+export default function PlanSettings({ startStr, raceStr, onSave, onCancel, ability, onAbilityChange }) {
   const [start,      setStart]      = useState(startStr ?? '');
   const [race,       setRace]       = useState(raceStr ?? (startStr ? addWeeks(startStr, 16) : ''));
   // True only when the stored race date differs from the auto-computed start+16w, meaning the user
@@ -93,6 +101,24 @@ export default function PlanSettings({ startStr, raceStr, onSave, onCancel }) {
             Auto-set to 16 weeks from start — override if your race date differs.
           </p>
         </div>
+
+        {ability != null && (
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5">
+              Skill level
+            </label>
+            <select
+              className="field"
+              value={ability}
+              onChange={e => onAbilityChange?.(e.target.value)}
+            >
+              {ABILITIES.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
+            </select>
+            <p className="text-xs text-slate-600 mt-1">
+              Calibrates default workout intensities across the plan.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2 mt-5">

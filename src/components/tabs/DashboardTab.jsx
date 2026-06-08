@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS, TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
 import { apiFetch } from '../../lib/api';
+import { loadOverrides } from '../../lib/runTypes';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ function formatPacePerKm(mps) {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-function computePRs(activities) {
+function computePRs(activities, overrides) {
   const today = Date.now();
   return PR_TARGETS.map(({ name, targetM, goalSecs, goalLabel, paceUnit }) => {
     // Include any run at least as long as the target distance.
@@ -63,7 +64,8 @@ function computePRs(activities) {
     // at a faster pace beat shorter slower ones.
     const runs = activities.filter(a => {
       const sport = (a.sport_type || a.type || '').toLowerCase();
-      return sport === 'run' && a.distance >= targetM * 0.95 && a.elapsed_time > 0 && a.average_speed > 0;
+      return sport === 'run' && a.distance >= targetM * 0.95 && a.elapsed_time > 0 && a.average_speed > 0
+        && resolveActivityType(a, overrides) !== 'Rest';
     });
     if (!runs.length) return { name, time: null, date: null, pace: null, elapsedSecs: null, top3: [], goalSecs, goalLabel };
 
@@ -108,13 +110,24 @@ const WORKOUT_TYPE_COLORS = {
   'Long run': TOKENS.purple,
   Race:       TOKENS.yellow,
   Workout:    TOKENS.red,
+  Rest:       TOKENS.textMuted,
 };
 
-function computeBreakdown(activities) {
-  const runs = activities.filter(a => (a.sport_type || a.type || '').toLowerCase() === 'run');
+// Resolve an activity's display type, honoring any user override saved from
+// the History list (keyed by Strava activity id) before falling back to
+// Strava's own workout_type classification.
+function resolveActivityType(a, overrides) {
+  return overrides[a.id] ?? (WORKOUT_TYPE_MAP[a.workout_type] ?? 'Easy');
+}
+
+function computeBreakdown(activities, overrides) {
+  const runs = activities.filter(a =>
+    (a.sport_type || a.type || '').toLowerCase() === 'run' &&
+    resolveActivityType(a, overrides) !== 'Rest'
+  );
   const counts = {};
   runs.forEach(a => {
-    const label = WORKOUT_TYPE_MAP[a.workout_type] ?? 'Easy';
+    const label = resolveActivityType(a, overrides);
     counts[label] = (counts[label] || 0) + 1;
   });
   return Object.entries(counts)
@@ -122,10 +135,11 @@ function computeBreakdown(activities) {
     .sort((a, b) => b.count - a.count);
 }
 
-function computeAverages(activities) {
+function computeAverages(activities, overrides) {
   const runs = activities.filter(a =>
     (a.sport_type || a.type || '').toLowerCase() === 'run' &&
-    a.distance > 0 && a.moving_time > 0
+    a.distance > 0 && a.moving_time > 0 &&
+    resolveActivityType(a, overrides) !== 'Rest'
   );
   if (!runs.length) return null;
 
@@ -420,10 +434,11 @@ export default function DashboardTab() {
     );
   }
 
+  const overrides  = loadOverrides();
   const allTotals  = stats?.all_run_totals;
-  const prs        = computePRs(activities);
-  const breakdown  = computeBreakdown(activities);
-  const averages   = computeAverages(activities);
+  const prs        = computePRs(activities, overrides);
+  const breakdown  = computeBreakdown(activities, overrides);
+  const averages   = computeAverages(activities, overrides);
   const totalRuns  = breakdown.reduce((s, e) => s + e.count, 0);
 
   return (
