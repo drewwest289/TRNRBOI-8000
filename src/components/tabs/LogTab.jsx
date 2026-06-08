@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from '../../icons/PixelIcons';
-import { useRuns, addRun, deleteRun } from '../../hooks/useRuns';
+import { useActivities, addManualActivity, deleteManualActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import { paceStr } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
@@ -12,7 +12,7 @@ const RUN_TYPES = ['Easy', 'Tempo', 'Long run', 'Intervals', 'Cross-train'];
 const localToday = () => localDateStr(new Date());
 
 export default function LogTab() {
-  const runs        = useRuns();
+  const activities  = useActivities();
   const { user: authUser } = useAuth();
 
   const [form, setForm] = useState({
@@ -33,9 +33,8 @@ export default function LogTab() {
       setFeedback('error:Date, distance, and duration are required.');
       return;
     }
-    const userName = authUser?.name || 'Me';
     try {
-      await addRun({ user: userName, date: form.date, dist, dur, type: form.type, notes: form.notes });
+      await addManualActivity({ date: form.date, dist, dur, type: form.type, notes: form.notes });
       setForm(f => ({ ...f, dist: '', dur: '', notes: '' }));
       setFeedback('ok');
       setTimeout(() => setFeedback(''), 2000);
@@ -46,7 +45,7 @@ export default function LogTab() {
 
   async function handleDelete(id) {
     if (!confirm('Delete this run?')) return;
-    await deleteRun(id);
+    await deleteManualActivity(id);
   }
 
   return (
@@ -109,11 +108,11 @@ export default function LogTab() {
           activity={{
             name:     detailRun.notes || `${detailRun.type} run`,
             date:     detailRun.date,
-            distMi:   detailRun.dist,
-            durMin:   detailRun.dur,
-            hr:       null,
+            distMi:   detailRun.distMi,
+            durMin:   detailRun.durMin,
+            hr:       detailRun.hr,
             notes:    detailRun.notes,
-            stravaId: detailRun.strava_id ?? detailRun.stravaId ?? null,
+            stravaId: detailRun.stravaId,
           }}
           onClose={() => setDetailRun(null)}
         />
@@ -122,14 +121,14 @@ export default function LogTab() {
       {/* Recent runs — 48px rows with chips */}
       <div className="card">
         <div className="section-label">Recent runs</div>
-        {runs.length === 0 ? (
+        {activities.length === 0 ? (
           <div className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
             No runs logged yet
           </div>
         ) : (
           <div>
-            {runs.slice(0, 25).map((r, idx) => {
-              const pace = paceStr(r.dist, r.dur);
+            {activities.slice(0, 25).map((r, idx) => {
+              const pace = paceStr(r.distMi, r.durMin);
               return (
                 <div
                   key={r.id}
@@ -145,23 +144,25 @@ export default function LogTab() {
                 >
                   <div className="text-xs pl-2" style={{ color: 'var(--text-muted)' }}>{r.date}</div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user || authUser?.name}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{authUser?.name}</span>
                     <span className={chipClass(r.type)}>{r.type}</span>
                   </div>
                   <div className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
                     {pace}/mi
                   </div>
                   <div className="text-sm font-bold text-right pr-2" style={{ color: 'var(--text-primary)' }}>
-                    {r.dist.toFixed(1)} mi
+                    {r.distMi.toFixed(1)} mi
                   </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); handleDelete(r.id); }}
-                    className="opacity-0 group-hover:opacity-100 flex items-center justify-center"
-                    style={{ color: 'var(--text-muted)', transition: 'none' }}
-                    aria-label="Delete run"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {r.source === 'manual' && (
+                    <button
+                      onClick={e => { e.stopPropagation(); handleDelete(r.id); }}
+                      className="opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                      style={{ color: 'var(--text-muted)', transition: 'none' }}
+                      aria-label="Delete run"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               );
             })}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Settings } from '../../icons/PixelIcons';
-import { useRuns } from '../../hooks/useRuns';
+import { useActivities } from '../../hooks/useActivities';
 import { usePlanOverrides } from '../../hooks/usePlanOverrides';
 import { getPlanWeek, getMiles, getActualMilesForWeek } from '../../lib/plan';
 import { TOKENS } from '../../lib/colors';
@@ -44,7 +44,7 @@ export default function PlanTab({ plan }) {
   const [showSettings, setShowSettings] = useState(false);
   const [drawerDay,    setDrawerDay]    = useState(null); // { dateStr, dayStr, logs }
 
-  const runs          = useRuns();
+  const activities    = useActivities();
   const planOverrides = usePlanOverrides();
 
   // After saving new plan dates, jump the view to the recalculated current week.
@@ -98,8 +98,8 @@ export default function PlanTab({ plan }) {
   // Metric cards use the *current* week's data, not the viewed week.
   const currentWeekData   = getPlanWeek(currentWeek ?? 1, totalWeeks, ability);
   const currentPlanned    = getMiles(currentWeekData);
-  const currentActual     = getActualMilesForWeek(currentWeek ?? 1, runs);
-  const total             = runs.reduce((s, r) => s + r.dist, 0);
+  const currentActual     = getActualMilesForWeek(currentWeek ?? 1, activities);
+  const total             = activities.reduce((s, r) => s + r.distMi, 0);
   const plannedThru       = Array.from({ length: currentWeek ?? 1 }, (_, i) => getPlanWeek(i + 1, totalWeeks, ability))
     .reduce((s, w) => s + getMiles(w), 0);
   const completion        = plannedThru > 0
@@ -193,7 +193,7 @@ export default function PlanTab({ plan }) {
 
         <WeekGrid
           week={week}
-          runs={runs}
+          runs={activities}
           planOverrides={planOverrides}
           totalWeeks={totalWeeks}
           ability={ability}
@@ -231,7 +231,7 @@ export default function PlanTab({ plan }) {
             </div>
           </div>
         </div>
-        <MileageChart runs={runs} currentWeek={week} totalWeeks={totalWeeks} ability={ability} />
+        <MileageChart runs={activities} currentWeek={week} totalWeeks={totalWeeks} ability={ability} />
       </div>
 
       {/* Day detail drawer */}

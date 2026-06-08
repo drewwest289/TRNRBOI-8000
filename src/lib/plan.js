@@ -181,7 +181,7 @@ export function getDaysUntilRace() {
 
 export function getActualMilesForWeek(week, runs) {
   const dates = Array.from({ length: 7 }, (_, i) => getDateForCell(week, i));
-  return runs.filter(r => dates.includes(r.date)).reduce((sum, r) => sum + r.dist, 0);
+  return runs.filter(r => dates.includes(r.date)).reduce((sum, r) => sum + r.distMi, 0);
 }
 
 export function getLogsForDate(dateStr, runs) {

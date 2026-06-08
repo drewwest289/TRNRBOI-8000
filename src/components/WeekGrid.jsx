@@ -105,12 +105,12 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, t
             {/* Completion indicators */}
             {hasActiveLog && !isRest && (
               <div className="text-xs font-bold mt-1" style={{ color: TOKENS.green }}>
-                ✓ {logs.reduce((s, r) => s + r.dist, 0).toFixed(1)}
+                ✓ {logs.reduce((s, r) => s + r.distMi, 0).toFixed(1)}
               </div>
             )}
             {hasActiveLog && isRest && (
               <div className="text-xs font-bold mt-1" style={{ color: TOKENS.red }}>
-                {logs.reduce((s, r) => s + r.dist, 0).toFixed(1)}mi
+                {logs.reduce((s, r) => s + r.distMi, 0).toFixed(1)}mi
               </div>
             )}
             {hasRestLog && (

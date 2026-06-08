@@ -4,25 +4,26 @@ import {
   ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { useRuns } from '../../hooks/useRuns';
+import { useActivities, setActivityOverride, updateManualActivity, TYPE_OPTIONS } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
-import { TYPE_COLOR, CHART_COLORS, chipClass, TOKENS } from '../../lib/colors';
-import { TYPE_OPTIONS, loadOverrides, saveOverride, resolvedType } from '../../lib/runTypes';
-import { StravaStatsCard, StravaActivitiesCard } from '../StravaCards';
+import { TYPE_COLOR, CHART_COLORS, TOKENS } from '../../lib/colors';
+import { StravaStatsCard } from '../StravaCards';
 import ActivityDetailModal from '../ActivityDetailModal';
 
 // ── Chart data helpers ────────────────────────────────────────────────────────
+// `type` arrives pre-resolved from /api/activities (override applied server-side),
+// so these just read it directly — no local override store to consult.
 
-function weeklyMileageData(runs, overrides) {
+function weeklyMileageData(runs) {
   const byWeek = {};
   runs.forEach(r => {
-    if (resolvedType(r, overrides) === 'Rest') return;
+    if (r.type === 'Rest') return;
     const d = new Date(r.date + 'T00:00:00');
     d.setDate(d.getDate() - d.getDay());
     const key = localDateStr(d);
-    byWeek[key] = (byWeek[key] || 0) + r.dist;
+    byWeek[key] = (byWeek[key] || 0) + r.distMi;
   });
   return Object.entries(byWeek)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -30,36 +31,27 @@ function weeklyMileageData(runs, overrides) {
     .map(([date, miles]) => ({ date: date.slice(5), miles: parseFloat(miles.toFixed(1)) }));
 }
 
-function paceTrendData(runs, overrides) {
+function paceTrendData(runs) {
   return [...runs]
-    .filter(r => {
-      const type = resolvedType(r, overrides);
-      return r.dist > 0 && r.dur > 0 && type !== 'Cross-train' && type !== 'Rest';
-    })
+    .filter(r => r.distMi > 0 && r.durMin > 0 && r.type !== 'Cross-train' && r.type !== 'Rest')
     .slice(0, 20)
     .reverse()
-    .map(r => {
-      // HR may be stored as a dedicated field or encoded in notes as "Avg HR 155 bpm"
-      const hrMatch = r.notes?.match(/Avg HR (\d+) bpm/i);
-      const hr = r.hr != null ? r.hr : (hrMatch ? parseInt(hrMatch[1], 10) : undefined);
-      return {
-        date:     r.date.slice(5),    // MM-DD for axis labels
-        fullDate: r.date,             // YYYY-MM-DD for tooltip
-        pace:     parseFloat(paceDecimal(r.dist, r.dur).toFixed(2)),
-        hr:       hr != null ? hr : undefined,
-        type:     resolvedType(r, overrides),
-        dist:     r.dist,
-        dur:      r.dur,
-      };
-    });
+    .map(r => ({
+      date:     r.date.slice(5),    // MM-DD for axis labels
+      fullDate: r.date,             // YYYY-MM-DD for tooltip
+      pace:     parseFloat(paceDecimal(r.distMi, r.durMin).toFixed(2)),
+      hr:       r.hr ?? undefined,
+      type:     r.type,
+      dist:     r.distMi,
+      dur:      r.durMin,
+    }));
 }
 
-function runTypeData(runs, overrides) {
+function runTypeData(runs) {
   const counts = {};
   runs.forEach(r => {
-    const type = resolvedType(r, overrides);
-    if (type === 'Rest') return;
-    counts[type] = (counts[type] || 0) + 1;
+    if (r.type === 'Rest') return;
+    counts[r.type] = (counts[r.type] || 0) + 1;
   });
   return Object.entries(counts).map(([type, count]) => ({ type, count }));
 }
@@ -115,46 +107,45 @@ const PaceHRTooltip = ({ active, payload }) => {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HistoryTab() {
-  const runs               = useRuns();
+  const activities         = useActivities();
   const { user: authUser } = useAuth();
-  const [overrides,  setOverrides]  = useState(loadOverrides);
   const [activeRun,  setActiveRun]  = useState(null);
-
-  const defaultUser = authUser?.name || 'Me';
 
   // Rest days are kept in the log (so a mistaken tag is easy to undo) but
   // excluded from every stat, chart, and average below.
-  const trainingRuns = runs.filter(r => resolvedType(r, overrides) !== 'Rest');
+  const trainingRuns = activities.filter(r => r.type !== 'Rest');
 
-  const weeklyData = weeklyMileageData(runs, overrides);
-  const paceData   = paceTrendData(runs, overrides);
-  const typeData   = runTypeData(runs, overrides);
+  const weeklyData = weeklyMileageData(activities);
+  const paceData   = paceTrendData(activities);
+  const typeData   = runTypeData(activities);
   const hasHR      = paceData.some(d => d.hr != null);
 
-  const totalMiles = trainingRuns.reduce((s, r) => s + r.dist, 0);
+  const totalMiles = trainingRuns.reduce((s, r) => s + r.distMi, 0);
   const avgPace    = trainingRuns.length
-    ? paceStr(trainingRuns.reduce((s, r) => s + r.dist, 0), trainingRuns.reduce((s, r) => s + r.dur, 0))
+    ? paceStr(trainingRuns.reduce((s, r) => s + r.distMi, 0), trainingRuns.reduce((s, r) => s + r.durMin, 0))
     : '--';
 
-  function handleTypeChange(run, newType) {
-    saveOverride(run, newType);
-    setOverrides(loadOverrides());
+  // Type corrections persist server-side via activity_overrides — the same
+  // mutation regardless of whether the row's facts come from Strava or a
+  // manual entry, so Dashboard/History/Plan can never disagree again.
+  async function handleTypeChange(run, newType) {
+    if (run.source === 'strava') await setActivityOverride(run.stravaId, { type: newType });
+    else                         await updateManualActivity(run.id, { type: newType });
   }
 
   return (
     <div>
       <StravaStatsCard />
-      <StravaActivitiesCard defaultUser={defaultUser} />
 
       {activeRun && (
         <ActivityDetailModal
           activity={{
             name:     activeRun.notes?.match(/^(.+?)\n/)?.[1] || `${activeRun.type} · ${activeRun.date}`,
             date:     activeRun.date,
-            distMi:   activeRun.dist,
-            durMin:   activeRun.dur,
-            hr:       activeRun.hr ?? (activeRun.notes?.match(/Avg HR (\d+)/)?.[1] ? parseInt(activeRun.notes.match(/Avg HR (\d+)/)[1]) : null),
-            stravaId: activeRun.strava_id ?? activeRun.stravaId ?? null,
+            distMi:   activeRun.distMi,
+            durMin:   activeRun.durMin,
+            hr:       activeRun.hr,
+            stravaId: activeRun.stravaId,
           }}
           onClose={() => setActiveRun(null)}
         />
@@ -338,13 +329,12 @@ export default function HistoryTab() {
       {/* Full run log */}
       <div className="card">
         <div className="section-label">All runs</div>
-        {runs.length === 0 ? (
+        {activities.length === 0 ? (
           <div className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No runs logged yet</div>
         ) : (
           <div>
-            {runs.map((r, idx) => {
-              const pace        = paceStr(r.dist, r.dur);
-              const displayType = resolvedType(r, overrides);
+            {activities.map((r, idx) => {
+              const pace = paceStr(r.distMi, r.durMin);
               return (
                 <div
                   key={r.id}
@@ -355,7 +345,7 @@ export default function HistoryTab() {
                     borderBottom: '1px solid var(--border)',
                     backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
                     padding: '0 4px',
-                    opacity: displayType === 'Rest' ? 0.5 : 1,
+                    opacity: r.type === 'Rest' ? 0.5 : 1,
                   }}
                 >
                   <div className="text-xs pl-1" style={{ color: 'var(--text-muted)' }}>{r.date}</div>
@@ -364,12 +354,12 @@ export default function HistoryTab() {
                     onClick={() => setActiveRun(r)}
                     title="View details"
                   >
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{r.user || defaultUser}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{authUser?.name}</span>
                   </button>
                   <select
                     className="text-xs rounded px-1 py-0.5 border border-slate-700 bg-slate-800 cursor-pointer"
-                    style={{ color: TYPE_COLOR[displayType] || 'var(--text-muted)' }}
-                    value={displayType}
+                    style={{ color: TYPE_COLOR[r.type] || 'var(--text-muted)' }}
+                    value={r.type}
                     onChange={e => { e.stopPropagation(); handleTypeChange(r, e.target.value); }}
                     onClick={e => e.stopPropagation()}
                   >
@@ -379,7 +369,7 @@ export default function HistoryTab() {
                   </select>
                   <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{pace}/mi</div>
                   <div className="text-sm font-bold text-right pr-1" style={{ color: 'var(--text-primary)' }}>
-                    {r.dist.toFixed(1)} mi
+                    {r.distMi.toFixed(1)} mi
                   </div>
                 </div>
               );

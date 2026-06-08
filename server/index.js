@@ -508,6 +508,27 @@ app.post('/api/activities/manual', requireAuth, async (req, res) => {
   res.json({ ok: true, id: data.id });
 });
 
+// Update a local-only activity entry in place.
+app.put('/api/activities/manual/:id', requireAuth, async (req, res) => {
+  const { date, dist, dur, type, notes } = req.body;
+  const fields = {};
+  if (date !== undefined)  fields.date  = date;
+  if (dist !== undefined)  fields.dist  = parseFloat(dist);
+  if (dur !== undefined)   fields.dur   = parseInt(dur, 10);
+  if (type !== undefined)  fields.type  = type;
+  if (notes !== undefined) fields.notes = notes;
+  fields.updated_at = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('activity_overrides')
+    .update(fields)
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .is('strava_id', null);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 // Remove a local-only activity entry.
 app.delete('/api/activities/manual/:id', requireAuth, async (req, res) => {
   const { error } = await supabase

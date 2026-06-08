@@ -4,7 +4,8 @@ import {
   ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
-import { fetchStravaActivities, fetchStravaZones } from '../../lib/strava';
+import { apiFetch } from '../../lib/api';
+import { fetchStravaZones } from '../../lib/strava';
 import { TOKENS, chipClass } from '../../lib/colors';
 import { secToMMSS, formatPaceTick } from '../../lib/pace';
 
@@ -21,22 +22,6 @@ function speedToPaceStr(mps) {
   const d = speedToMinMi(mps);
   if (!d) return '—';
   return secToMMSS(d * 60);
-}
-
-/** Classify a raw Strava activity into a display type string */
-function classifyActivity(a) {
-  const sport = (a.sport_type || a.type || '').toLowerCase();
-  if (sport !== 'run') return 'Cross-train';
-  const wt   = a.workout_type;
-  const name = (a.name || '').toLowerCase();
-  if (wt === 1) return 'Race';
-  if (wt === 2) return 'Long run';
-  if (wt === 3) return 'Tempo';
-  if (name.includes('tempo') || name.includes('threshold')) return 'Tempo';
-  if (name.includes('interval') || name.includes('hiit') || name.includes('speed')) return 'Intervals';
-  if (name.includes('long') || name.includes('lsd'))  return 'Long run';
-  if (name.includes('race') || name.includes('5k') || name.includes('10k')) return 'Race';
-  return 'Easy';
 }
 
 /** Which 1-based HR zone (1-5) does a given HR fall in, given zone boundaries array */
@@ -119,7 +104,7 @@ function TrendTooltip({ active, payload }) {
 
 // ── Section 1: Pace + fitness dashboard ──────────────────────────────────────
 
-function PaceDashboard({ runs, zones }) {
+function PaceDashboard({ runs, zones, typeById }) {
   // Last 30 days
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
   const recent = runs.filter(a => new Date(a.start_date_local) >= cutoff && a.average_speed > 0);
@@ -157,7 +142,7 @@ function PaceDashboard({ runs, zones }) {
   // Pace by type
   const typeGroups = {};
   runs.filter(a => a.average_speed > 0).forEach(a => {
-    const t = classifyActivity(a);
+    const t = typeById.get(a.id) ?? 'Easy';
     if (!TYPE_ROWS.includes(t)) return;
     if (!typeGroups[t]) typeGroups[t] = [];
     typeGroups[t].push(a.average_speed);
@@ -333,7 +318,7 @@ function PaceDashboard({ runs, zones }) {
 
 // ── Section 2: PRs + recent bests ────────────────────────────────────────────
 
-function PRsAndRecents({ runs }) {
+function PRsAndRecents({ runs, typeById }) {
   // PR table
   const prRows = PR_TARGETS.map(({ label, targetM }) => {
     const candidates = runs.filter(a =>
@@ -400,7 +385,7 @@ function PRsAndRecents({ runs }) {
           <div className="section-label">Recent runs</div>
           <div>
             {recentRuns.map((a, i) => {
-              const type  = classifyActivity(a);
+              const type  = typeById.get(a.id) ?? 'Easy';
               const pace  = speedToPaceStr(a.average_speed);
               const dist  = (a.distance / 1609.34).toFixed(1);
               const hr    = a.average_heartrate ? Math.round(a.average_heartrate) : null;
@@ -439,7 +424,14 @@ function PRsAndRecents({ runs }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PaceTab() {
+  // PR/pace-trend/HR-zone math needs precise raw Strava fields (average_speed,
+  // distance, average_heartrate, ...) that only live on source === 'strava'
+  // entries — so we keep working with raw activity objects here, just sourced
+  // from the merged feed instead of a direct Strava pull. `typeById` carries
+  // the server-resolved type (override-aware) for display, replacing the
+  // tab's own classifier so every tab agrees on an activity's type.
   const [runs,         setRuns]         = useState([]);
+  const [typeById,     setTypeById]     = useState(new Map());
   const [zones,        setZones]        = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [disconnected, setDisconnected] = useState(false);
@@ -449,16 +441,18 @@ export default function PaceTab() {
     setLoading(true);
     setErr(null);
     Promise.all([
-      fetchStravaActivities(100),
+      apiFetch('/api/activities'),
       fetchStravaZones().catch(() => null), // zones are optional
     ])
-      .then(([acts, z]) => {
-        setRuns(acts.filter(a => (a.sport_type || a.type || '').toLowerCase() === 'run'));
+      .then(([activities, z]) => {
+        const stravaRuns = activities.filter(a => a.source === 'strava' && a.raw);
+        setTypeById(new Map(stravaRuns.map(a => [a.stravaId, a.type])));
+        setRuns(stravaRuns.map(a => a.raw).filter(a => (a.sport_type || a.type || '').toLowerCase() === 'run'));
         setZones(z?.heart_rate?.zones ?? null);
       })
       .catch(e => {
         const msg = e.message || '';
-        if (msg.includes('not connected') || msg.includes('OAuth') || msg.includes('401')) {
+        if (msg.includes('No Strava tokens') || msg.includes('not connected') || msg.includes('OAuth') || msg.includes('401')) {
           setDisconnected(true);
         } else {
           setErr(msg);
@@ -508,8 +502,8 @@ export default function PaceTab() {
 
   return (
     <div>
-      <PaceDashboard runs={runs} zones={zones} />
-      <PRsAndRecents runs={runs} />
+      <PaceDashboard runs={runs} zones={zones} typeById={typeById} />
+      <PRsAndRecents runs={runs} typeById={typeById} />
     </div>
   );
 }

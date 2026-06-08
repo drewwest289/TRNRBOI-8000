@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { X, Trash2, Pencil } from '../icons/PixelIcons';
 import ActivityDetailModal from './ActivityDetailModal';
-import { useAuth } from '../hooks/useAuth';
-import { addRun, deleteRun } from '../hooks/useRuns';
+import {
+  addManualActivity, updateManualActivity, deleteManualActivity,
+  setActivityOverride, TYPE_OPTIONS,
+} from '../hooks/useActivities';
 import { setPlanOverride } from '../hooks/usePlanOverrides';
 import { paceStr } from '../lib/pace';
 import { getDayType, getDayMiles, localDateStr } from '../lib/plan';
@@ -60,7 +62,7 @@ function getWeekDates(dateStr) {
 // ── Sub-views ─────────────────────────────────────────────────────────────────
 
 /** Stats view — shown when run(s) are already logged for the day */
-function StatsView({ logs, onEdit, onDelete, onBack }) {
+function StatsView({ logs, onEdit, onDelete, onTypeChange, onBack }) {
   const [detailRun, setDetailRun] = useState(null);
 
   return (
@@ -70,28 +72,43 @@ function StatsView({ logs, onEdit, onDelete, onBack }) {
           activity={{
             name:     detailRun.notes || `${detailRun.type} run`,
             date:     detailRun.date,
-            distMi:   detailRun.dist,
-            durMin:   detailRun.dur,
-            hr:       null,
+            distMi:   detailRun.distMi,
+            durMin:   detailRun.durMin,
+            hr:       detailRun.hr,
             notes:    detailRun.notes,
-            stravaId: detailRun.strava_id ?? detailRun.stravaId ?? null,
+            stravaId: detailRun.stravaId,
           }}
           onClose={() => setDetailRun(null)}
         />
       )}
 
       {logs.map((r, idx) => {
-        const color = TYPE_COLOR[r.type] || '#64748b';
-        const pace  = paceStr(r.dist, r.dur);
+        const color    = TYPE_COLOR[r.type] || '#64748b';
+        const pace     = paceStr(r.distMi, r.durMin);
+        const isManual = r.source === 'manual';
         return (
           <div key={r.id ?? idx} className={`${idx > 0 ? 'mt-4 pt-4 border-t border-slate-800' : ''}`}>
             <div className="flex items-center justify-between mb-3">
-              <span
-                className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                style={{ color, backgroundColor: `${color}22` }}
-              >
-                {r.type}
-              </span>
+              {/* Strava-sourced facts are immutable — type can only be corrected
+                  via an override, so it gets an inline picker instead of a static
+                  chip (same correction the History tab offers, just inline here). */}
+              {(r.type === 'Rest' || isManual) ? (
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  style={{ color, backgroundColor: `${color}22` }}
+                >
+                  {r.type}
+                </span>
+              ) : (
+                <select
+                  className="text-xs font-semibold rounded-full px-2 py-0.5 border-0 cursor-pointer"
+                  style={{ color, backgroundColor: `${color}22` }}
+                  value={r.type}
+                  onChange={e => onTypeChange(r, e.target.value)}
+                >
+                  {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              )}
               <div className="flex items-center gap-2">
                 <button
                   className="btn-ghost text-xs"
@@ -100,7 +117,7 @@ function StatsView({ logs, onEdit, onDelete, onBack }) {
                 >
                   Details
                 </button>
-                {r.type !== 'Rest' && (
+                {isManual && r.type !== 'Rest' && (
                   <button
                     className="btn-icon"
                     onClick={() => onEdit(r)}
@@ -109,13 +126,15 @@ function StatsView({ logs, onEdit, onDelete, onBack }) {
                     <Pencil size={13} />
                   </button>
                 )}
-                <button
-                  className="btn-icon text-slate-500 hover:text-red-400"
-                  onClick={() => onDelete(r)}
-                  aria-label="Delete"
-                >
-                  <Trash2 size={13} />
-                </button>
+                {isManual && (
+                  <button
+                    className="btn-icon text-slate-500 hover:text-red-400"
+                    onClick={() => onDelete(r)}
+                    aria-label="Delete"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -126,7 +145,7 @@ function StatsView({ logs, onEdit, onDelete, onBack }) {
             ) : (
               <div className="grid grid-cols-3 gap-3 mb-2">
                 <div className="bg-slate-800 rounded-lg p-3 text-center">
-                  <div className="text-lg font-semibold text-white">{r.dist?.toFixed(2)}</div>
+                  <div className="text-lg font-semibold text-white">{r.distMi?.toFixed(2)}</div>
                   <div className="text-xs text-slate-500 mt-0.5">miles</div>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3 text-center">
@@ -134,7 +153,7 @@ function StatsView({ logs, onEdit, onDelete, onBack }) {
                   <div className="text-xs text-slate-500 mt-0.5">/mi pace</div>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3 text-center">
-                  <div className="text-lg font-semibold text-white">{r.dur}</div>
+                  <div className="text-lg font-semibold text-white">{r.durMin}</div>
                   <div className="text-xs text-slate-500 mt-0.5">min</div>
                 </div>
               </div>
@@ -210,7 +229,7 @@ function RunForm({ initial, onSave, onCancel }) {
 }
 
 /** Cross-train log form */
-function CrossForm({ dateStr, user, onSave, onCancel }) {
+function CrossForm({ dateStr, onSave, onCancel }) {
   const [activity, setActivity] = useState('Bike');
   const [dur,      setDur]      = useState('');
   const [notes,    setNotes]    = useState('');
@@ -220,7 +239,7 @@ function CrossForm({ dateStr, user, onSave, onCancel }) {
     const d = parseInt(dur, 10);
     if (isNaN(d) || d <= 0) { setErr('Duration is required.'); return; }
     onSave({
-      user, date: dateStr, type: 'Cross-train', dist: 0, dur: d,
+      date: dateStr, type: 'Cross-train', dist: 0, dur: d,
       notes: [activity, notes].filter(Boolean).join(' — '),
     });
   }
@@ -260,7 +279,7 @@ function CrossForm({ dateStr, user, onSave, onCancel }) {
 }
 
 /** Defer-to picker — shows the other 6 days in the same week */
-function DeferView({ dateStr, dayStr, user, onSave, onCancel }) {
+function DeferView({ dateStr, dayStr, onSave, onCancel }) {
   const weekDates  = getWeekDates(dateStr).filter(d => d !== dateStr);
   const [target, setTarget] = useState(weekDates[0] ?? '');
 
@@ -342,9 +361,6 @@ function PlanRunForm({ dateStr, planType, plannedMi, onSave, onCancel }) {
  *   onClose  — close callback
  */
 export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
-  const { user }    = useAuth();
-  const defaultUser = user?.name || 'Me';
-
   const planType    = getDayType(dayStr);   // e.g. 'easy'
   const plannedMi   = getDayMiles(dayStr);  // e.g. 3
 
@@ -362,15 +378,13 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
   // ── DB operations ────────────────────────────────────────────────────────
 
   async function handleAddRun(fields) {
-    await addRun({ user: defaultUser, ...fields });
+    await addManualActivity(fields);
     onClose();
   }
 
   async function saveEdit(fields) {
-    // Delete + re-add since the API has no PATCH route.
-    await deleteRun(editing.id);
-    await addRun({
-      user: defaultUser, date: editing.date,
+    await updateManualActivity(editing.id, {
+      date: editing.date,
       dist: parseFloat(fields.dist),
       dur:  parseInt(fields.dur, 10),
       type: fields.type,
@@ -381,12 +395,16 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
 
   async function handleDeleteRun(r) {
     if (!confirm(`Delete this ${r.type.toLowerCase()} entry?`)) return;
-    await deleteRun(r.id);
+    await deleteManualActivity(r.id);
     onClose();
   }
 
+  async function handleTypeChange(r, newType) {
+    await setActivityOverride(r.stravaId, { type: newType });
+  }
+
   async function markRest(note = '') {
-    await addRun({ user: defaultUser, date: dateStr, type: 'Rest', dist: 0, dur: 0, notes: note });
+    await addManualActivity({ date: dateStr, type: 'Rest', dist: 0, dur: 0, notes: note });
     onClose();
   }
 
@@ -396,12 +414,12 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
   }
 
   async function handleDefer(targetDate) {
-    await addRun({
-      user: defaultUser, date: dateStr, type: 'Rest', dist: 0, dur: 0,
+    await addManualActivity({
+      date: dateStr, type: 'Rest', dist: 0, dur: 0,
       notes: `Deferred to ${shortDate(targetDate)}`,
     });
-    await addRun({
-      user: defaultUser, date: targetDate,
+    await addManualActivity({
+      date: targetDate,
       type: PLAN_TO_LOG[planType] || 'Easy',
       dist: plannedMi || 0, dur: 0,
       notes: `Deferred from ${shortDate(dateStr)} — update with actual`,
@@ -480,6 +498,7 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
               logs={logs}
               onEdit={r => { setEditing(r); setView('edit'); }}
               onDelete={handleDeleteRun}
+              onTypeChange={handleTypeChange}
               onBack={() => setView('menu')}
             />
           )}
@@ -561,7 +580,6 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
           {view === 'log-cross' && (
             <CrossForm
               dateStr={dateStr}
-              user={defaultUser}
               onSave={handleAddRun}
               onCancel={() => setView('menu')}
             />
@@ -583,8 +601,8 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
             <RunForm
               initial={{
                 date:  editing.date,
-                dist:  String(editing.dist ?? ''),
-                dur:   String(editing.dur ?? ''),
+                dist:  String(editing.distMi ?? ''),
+                dur:   String(editing.durMin ?? ''),
                 type:  editing.type,
                 notes: editing.notes ?? '',
               }}
@@ -598,7 +616,6 @@ export default function DayDrawer({ dateStr, dayStr, logs, onClose }) {
             <DeferView
               dateStr={dateStr}
               dayStr={dayStr}
-              user={defaultUser}
               onSave={handleDefer}
               onCancel={() => setView('menu')}
             />

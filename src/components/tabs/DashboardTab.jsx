@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { RefreshCw, Users } from '../../icons/PixelIcons';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { CHART_COLORS, TOKENS } from '../../lib/colors';
+import { CHART_COLORS, TYPE_COLOR, TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
-import { apiFetch } from '../../lib/api';
-import { loadOverrides } from '../../lib/runTypes';
+import { useActivities } from '../../hooks/useActivities';
+import { paceStr } from '../../lib/pace';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,10 +33,6 @@ function formatPaceFromMps(mps) {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-async function fetchAllActivities() {
-  return apiFetch('/api/strava/activities/all');
-}
-
 // ── Derived data ──────────────────────────────────────────────────────────────
 
 const PR_TARGETS = [
@@ -56,16 +52,23 @@ function formatPacePerKm(mps) {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-function computePRs(activities, overrides) {
+function computePRs(activities) {
   const today = Date.now();
+  // PR math needs precise raw Strava fields (distance, elapsed_time,
+  // average_speed) — only present on source === 'strava' entries. The merged
+  // `.type` (already override-aware) is what filters out anything the user
+  // has corrected to 'Rest'.
+  const stravaRuns = activities
+    .filter(a => a.source === 'strava' && a.raw && a.type !== 'Rest')
+    .map(a => a.raw);
+
   return PR_TARGETS.map(({ name, targetM, goalSecs, goalLabel, paceUnit }) => {
     // Include any run at least as long as the target distance.
     // Sort by best average speed (fastest pace) so longer runs that were run
     // at a faster pace beat shorter slower ones.
-    const runs = activities.filter(a => {
+    const runs = stravaRuns.filter(a => {
       const sport = (a.sport_type || a.type || '').toLowerCase();
-      return sport === 'run' && a.distance >= targetM * 0.95 && a.elapsed_time > 0 && a.average_speed > 0
-        && resolveActivityType(a, overrides) !== 'Rest';
+      return sport === 'run' && a.distance >= targetM * 0.95 && a.elapsed_time > 0 && a.average_speed > 0;
     });
     if (!runs.length) return { name, time: null, date: null, pace: null, elapsedSecs: null, top3: [], goalSecs, goalLabel };
 
@@ -79,7 +82,7 @@ function computePRs(activities, overrides) {
       ? Math.floor((today - new Date(best.start_date_local).getTime()) / 86400000)
       : null;
 
-    const paceStr = paceUnit === 'km'
+    const bestPace = paceUnit === 'km'
       ? `${formatPacePerKm(best.average_speed)}/km`
       : `${formatPaceFromMps(best.average_speed)}/mi`;
 
@@ -89,7 +92,7 @@ function computePRs(activities, overrides) {
       elapsedSecs: estSecs,
       date:        best.start_date_local?.slice(0, 10) ?? null,
       daysSincePR,
-      pace:        paceStr,
+      pace:        bestPace,
       top3: sorted.slice(0, 3).map(a => ({
         time: formatDuration(Math.round(targetM / a.average_speed)),
         date: a.start_date_local?.slice(0, 10) ?? null,
@@ -103,61 +106,35 @@ function computePRs(activities, overrides) {
   });
 }
 
-// Strava workout_type: 0=default, 1=race, 2=long run, 3=workout
-const WORKOUT_TYPE_MAP = { 0: 'Easy', 1: 'Race', 2: 'Long run', 3: 'Workout' };
-const WORKOUT_TYPE_COLORS = {
-  Easy:      TOKENS.green,
-  'Long run': TOKENS.purple,
-  Race:       TOKENS.yellow,
-  Workout:    TOKENS.red,
-  Rest:       TOKENS.textMuted,
-};
-
-// Resolve an activity's display type, honoring any user override saved from
-// the History list (keyed by Strava activity id) before falling back to
-// Strava's own workout_type classification.
-function resolveActivityType(a, overrides) {
-  return overrides[a.id] ?? (WORKOUT_TYPE_MAP[a.workout_type] ?? 'Easy');
-}
-
-function computeBreakdown(activities, overrides) {
-  const runs = activities.filter(a =>
-    (a.sport_type || a.type || '').toLowerCase() === 'run' &&
-    resolveActivityType(a, overrides) !== 'Rest'
-  );
+function computeBreakdown(activities) {
   const counts = {};
-  runs.forEach(a => {
-    const label = resolveActivityType(a, overrides);
-    counts[label] = (counts[label] || 0) + 1;
+  activities.forEach(a => {
+    if (a.type === 'Rest') return;
+    counts[a.type] = (counts[a.type] || 0) + 1;
   });
   return Object.entries(counts)
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count);
 }
 
-function computeAverages(activities, overrides) {
-  const runs = activities.filter(a =>
-    (a.sport_type || a.type || '').toLowerCase() === 'run' &&
-    a.distance > 0 && a.moving_time > 0 &&
-    resolveActivityType(a, overrides) !== 'Rest'
-  );
+function computeAverages(activities) {
+  const runs = activities.filter(a => a.type !== 'Rest' && a.distMi > 0 && a.durMin > 0);
   if (!runs.length) return null;
 
-  const totalDist = runs.reduce((s, a) => s + a.distance, 0);
-  const totalTime = runs.reduce((s, a) => s + a.moving_time, 0);
+  const totalDist = runs.reduce((s, a) => s + a.distMi, 0);
+  const totalDur  = runs.reduce((s, a) => s + a.durMin, 0);
 
-  const withHR      = runs.filter(a => a.average_heartrate);
-  const withCadence = runs.filter(a => a.average_cadence);
+  const withHR      = runs.filter(a => a.hr);
+  const withCadence = runs.filter(a => a.cadence);
 
   return {
-    avgPace:     formatPaceFromMps(totalDist / totalTime),
-    avgDistMi:   metersToMiles(totalDist / runs.length).toFixed(2),
+    avgPace:     paceStr(totalDist, totalDur),
+    avgDistMi:   (totalDist / runs.length).toFixed(2),
     avgHR:       withHR.length
-      ? Math.round(withHR.reduce((s, a) => s + a.average_heartrate, 0) / withHR.length)
+      ? Math.round(withHR.reduce((s, a) => s + a.hr, 0) / withHR.length)
       : null,
-    // Strava cadence is one-foot steps; ×2 for steps per minute
     avgCadence:  withCadence.length
-      ? Math.round(withCadence.reduce((s, a) => s + a.average_cadence * 2, 0) / withCadence.length)
+      ? Math.round(withCadence.reduce((s, a) => s + a.cadence, 0) / withCadence.length)
       : null,
   };
 }
@@ -369,7 +346,7 @@ function LoadingSkeleton() {
 function BreakdownTooltip({ active, payload }) {
   if (!active || !payload?.[0]) return null;
   const { name, value } = payload[0];
-  const color = WORKOUT_TYPE_COLORS[name] || CHART_COLORS[0];
+  const color = TYPE_COLOR[name] || CHART_COLORS[0];
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs">
       <p style={{ color }}>{name}: {value}</p>
@@ -380,23 +357,19 @@ function BreakdownTooltip({ active, payload }) {
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function DashboardTab() {
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState(null);
-  const [athlete,    setAthlete]    = useState(null);
-  const [stats,      setStats]      = useState(null);
-  const [activities, setActivities] = useState([]);
+  const activities               = useActivities();
+  const [loading,  setLoading]   = useState(true);
+  const [error,    setError]     = useState(null);
+  const [athlete,  setAthlete]   = useState(null);
+  const [stats,    setStats]     = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [{ athlete: ath, stats: st }, acts] = await Promise.all([
-        fetchStravaAthlete(),
-        fetchAllActivities(),
-      ]);
+      const { athlete: ath, stats: st } = await fetchStravaAthlete();
       setAthlete(ath);
       setStats(st);
-      setActivities(acts);
     } catch (e) {
       setError(e.message || 'Unknown error');
     } finally {
@@ -408,7 +381,9 @@ export default function DashboardTab() {
 
   if (loading) return <LoadingSkeleton />;
 
-  const isNotConnected = error && (error.includes('not connected') || error.includes('OAuth'));
+  const isNotConnected = error && (
+    error.includes('No Strava tokens') || error.includes('not connected') || error.includes('OAuth')
+  );
 
   if (error) {
     return (
@@ -434,11 +409,10 @@ export default function DashboardTab() {
     );
   }
 
-  const overrides  = loadOverrides();
   const allTotals  = stats?.all_run_totals;
-  const prs        = computePRs(activities, overrides);
-  const breakdown  = computeBreakdown(activities, overrides);
-  const averages   = computeAverages(activities, overrides);
+  const prs        = computePRs(activities);
+  const breakdown  = computeBreakdown(activities);
+  const averages   = computeAverages(activities);
   const totalRuns  = breakdown.reduce((s, e) => s + e.count, 0);
 
   return (
@@ -514,7 +488,7 @@ export default function DashboardTab() {
                   {breakdown.map((entry, i) => (
                     <Cell
                       key={i}
-                      fill={WORKOUT_TYPE_COLORS[entry.type] || CHART_COLORS[i % CHART_COLORS.length]}
+                      fill={TYPE_COLOR[entry.type] || CHART_COLORS[i % CHART_COLORS.length]}
                     />
                   ))}
                 </Pie>
@@ -523,7 +497,7 @@ export default function DashboardTab() {
             </ResponsiveContainer>
             <div className="space-y-2">
               {breakdown.map((entry, i) => {
-                const color = WORKOUT_TYPE_COLORS[entry.type] || CHART_COLORS[i % CHART_COLORS.length];
+                const color = TYPE_COLOR[entry.type] || CHART_COLORS[i % CHART_COLORS.length];
                 const pct   = Math.round((entry.count / totalRuns) * 100);
                 return (
                   <div key={entry.type} className="flex items-center gap-2">
