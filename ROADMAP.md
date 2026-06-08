@@ -18,3 +18,4 @@ Phase 2 — Richer Strava Data
  Surface additional data on dashboard — Based on audit findings, add the most valuable unused data points to existing views. investigate how run type is assigned by Strava, seems like many runs are coming in as easy when the effort level should be higher.
 
 
+[x] there is no run information for Aaron Wallace, despite the fact that I belive he has connected his strava and i know he has runs. Let me know why. — Root cause: the Team leaderboard read from the old `runs` Supabase table (pre-OneTruth migration). Users who joined after the migration — Aaron included — have their data only in Strava's live API, never in `runs`. Fixed: the leaderboard endpoint now fetches Strava activities for all users server-side in parallel (last 90 days, using each user's stored token) and merges manual entries from `activity_overrides`. The old `runs` table is no longer consulted for Team stats.

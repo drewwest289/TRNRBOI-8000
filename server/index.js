@@ -700,24 +700,52 @@ function computeMetrics(runs, today) {
 
 app.get('/api/team/leaderboard', requireAuth, async (req, res) => {
   try {
-    const [{ data: users, error: userErr }, { data: allRuns, error: runErr }] = await Promise.all([
+    const [{ data: users, error: userErr }, { data: manualRows, error: manualErr }] = await Promise.all([
       supabase.from('users').select('id, name'),
-      supabase.from('runs').select('user_id, date, dist, dur, type'),
+      supabase.from('activity_overrides')
+        .select('user_id, date, dist, dur, type')
+        .is('strava_id', null),
     ]);
-    if (userErr) return res.status(500).json({ error: userErr.message });
-    if (runErr)  return res.status(500).json({ error: runErr.message });
+    if (userErr)  return res.status(500).json({ error: userErr.message });
+    if (manualErr) return res.status(500).json({ error: manualErr.message });
 
-    const today = isoDate(new Date());
-    const runsByUser = {};
-    for (const r of allRuns ?? []) {
-      if (!runsByUser[r.user_id]) runsByUser[r.user_id] = [];
-      runsByUser[r.user_id].push(r);
+    const today   = isoDate(new Date());
+    const since90 = addDays(today, -90);
+    const after90 = Math.floor(new Date(since90 + 'T00:00:00Z').getTime() / 1000);
+
+    // Manual entries from activity_overrides (no strava_id = manually logged)
+    const manualByUser = {};
+    for (const r of manualRows ?? []) {
+      if (!manualByUser[r.user_id]) manualByUser[r.user_id] = [];
+      manualByUser[r.user_id].push({
+        date: r.date, dist: parseFloat(r.dist), dur: r.dur, type: r.type ?? 'Easy',
+      });
     }
+
+    // Fetch live Strava activities for each user in parallel.
+    // Uses server-side token access (the same getValidAccessToken path used by /api/activities).
+    // Failures are silenced — a user with a broken token just shows 0 Strava runs.
+    const stravaByUser = {};
+    await Promise.all((users ?? []).map(async u => {
+      try {
+        const batch = await stravaGet('/athlete/activities', { per_page: 200, after: after90 }, u.id);
+        stravaByUser[u.id] = batch
+          .filter(a => (a.sport_type || a.type || '').toLowerCase() === 'run')
+          .map(a => ({
+            date: a.start_date_local?.substring(0, 10) ?? '',
+            dist: parseFloat((a.distance / 1609.34).toFixed(2)),
+            dur:  Math.round(a.moving_time / 60),
+            type: activityClassifier(a),
+          }));
+      } catch {
+        stravaByUser[u.id] = [];
+      }
+    }));
 
     const leaderboard = (users ?? []).map(u => ({
       id:      u.id,
       name:    u.name,
-      metrics: computeMetrics(runsByUser[u.id] ?? [], today),
+      metrics: computeMetrics([...(stravaByUser[u.id] ?? []), ...(manualByUser[u.id] ?? [])], today),
     }));
 
     res.json(leaderboard);
