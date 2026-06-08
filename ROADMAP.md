@@ -30,6 +30,15 @@ Allow the user to mark a scheduled run as skipped and have the training plan aut
 - Account for taper weeks and race day proximity when rescheduling
 - More clarity between goal and actual result on cards
 
+### Added by Drew
+Small things I have noticed.
+- tempo on the activity breakdown on the dashboard is purple instead of red. Make it match the other color.
+- clarify what pace by workout type is on pace tab. Right now not sure if it is an average or what.
+- personal records on pace tab do not match those on the dashboard.
+- Recent runs list is probably unnessesary on the pase tab.
+- change the Pace tab name to Stats
+- this is probably bigger, but I need an admin side of things now that I have more people connected. I created a test account that I want to remove now. And would like the ability to remove users if I want to.
+
 ## Longer term
 
 ### ✅ Multi-user support — Done
