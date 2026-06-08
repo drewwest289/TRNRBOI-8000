@@ -26,12 +26,15 @@ export function StravaStatsCard() {
 
   return (
     <div className="card">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-1">
         <Activity size={16} className="text-orange-400" />
         <span className="section-label mb-0">
           Strava — {athlete?.firstname} {athlete?.lastname}
         </span>
       </div>
+      <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+        Lifetime running totals from Strava's own records — your full history there, separate from the log below.
+      </p>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>

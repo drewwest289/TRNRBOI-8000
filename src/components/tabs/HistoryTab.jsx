@@ -192,14 +192,17 @@ export default function HistoryTab() {
       )}
 
       {/* Summary stats */}
+      <p className="text-xs mt-1 mb-2" style={{ color: 'var(--text-muted)' }}>
+        Totals from the runs &amp; cross-training logged in this app below — a different (usually smaller) set than Strava's lifetime numbers above, since those cover your whole Strava history.
+      </p>
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-slate-800 rounded-xl p-4 text-center">
           <div className="text-2xl font-semibold text-white">{trainingRuns.length}</div>
-          <div className="text-xs text-slate-500 mt-1">Total runs</div>
+          <div className="text-xs text-slate-500 mt-1">Logged runs</div>
         </div>
         <div className="bg-slate-800 rounded-xl p-4 text-center">
           <div className="text-2xl font-semibold text-white">{totalMiles.toFixed(0)}</div>
-          <div className="text-xs text-slate-500 mt-1">Total miles</div>
+          <div className="text-xs text-slate-500 mt-1">Logged miles</div>
         </div>
         <div className="bg-slate-800 rounded-xl p-4 text-center">
           <div className="text-2xl font-semibold text-white">{avgPace}</div>
