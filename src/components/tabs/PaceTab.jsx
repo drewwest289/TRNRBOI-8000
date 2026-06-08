@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, PixelIcon } from '../../icons/PixelIcons';
+import { RefreshCw } from '../../icons/PixelIcons';
 import {
   ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import { apiFetch } from '../../lib/api';
 import { fetchStravaZones } from '../../lib/strava';
-import { TOKENS, chipClass } from '../../lib/colors';
-import { secToMMSS, formatPaceTick } from '../../lib/pace';
+import { TOKENS } from '../../lib/colors';
+import { secToMMSS, formatPaceTick, prCandidates } from '../../lib/pace';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,14 +52,6 @@ const TYPE_COLOR_MAP = {
   'Tempo':    TOKENS.red,
   'Race':     TOKENS.yellow,
   'Intervals':TOKENS.red,
-};
-
-const TYPE_GLYPH_MAP = {
-  'Easy':     'runner',
-  'Long run': 'road',
-  'Tempo':    'bolt',
-  'Intervals':'bolt',
-  'Race':     'trophy',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -258,7 +250,8 @@ function PaceDashboard({ runs, zones, typeById }) {
         {/* Pace by type */}
         {typeRows.length > 0 && (
           <div className="card">
-            <div className="section-label">Pace by workout type</div>
+            <div className="section-label mb-0">Pace by workout type</div>
+            <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Average pace across logged runs of each type</p>
             <div className="space-y-2.5">
               {typeRows.map(r => {
                 const color = TYPE_COLOR_MAP[r.type] || TOKENS.green;
@@ -316,19 +309,17 @@ function PaceDashboard({ runs, zones, typeById }) {
   );
 }
 
-// ── Section 2: PRs + recent bests ────────────────────────────────────────────
+// ── Section 2: Personal records ───────────────────────────────────────────────
 
-function PRsAndRecents({ runs, typeById }) {
+function PersonalRecords({ runs }) {
   // PR table
   const prRows = PR_TARGETS.map(({ label, targetM }) => {
-    const candidates = runs.filter(a =>
-      a.distance >= targetM * 0.9 &&
-      a.distance <= targetM * 1.1 &&
-      a.average_speed > 0
-    );
+    const candidates = prCandidates(runs, targetM);
     if (!candidates.length) return { label, best: null };
-    const best    = candidates.reduce((b, a) => a.average_speed > b.average_speed ? a : b);
-    const timeSec = Math.round(best.distance / best.average_speed);
+    const best    = candidates[0];
+    // Estimate the time at the target distance from the best run's pace —
+    // same approach as the Dashboard so the two tabs agree on PRs.
+    const timeSec = Math.round(targetM / best.average_speed);
     const h = Math.floor(timeSec / 3600);
     const timeStr = h > 0
       ? `${h}:${String(Math.floor((timeSec % 3600) / 60)).padStart(2, '0')}:${String(timeSec % 60).padStart(2, '0')}`
@@ -341,9 +332,6 @@ function PRsAndRecents({ runs, typeById }) {
       isPR: true,
     };
   });
-
-  // Recent runs — last 8
-  const recentRuns = runs.slice(0, 8);
 
   return (
     <>
@@ -378,45 +366,6 @@ function PRsAndRecents({ runs, typeById }) {
           ))}
         </div>
       </div>
-
-      {/* Recent runs */}
-      {recentRuns.length > 0 && (
-        <div className="card">
-          <div className="section-label">Recent runs</div>
-          <div>
-            {recentRuns.map((a, i) => {
-              const type  = typeById.get(a.id) ?? 'Easy';
-              const pace  = speedToPaceStr(a.average_speed);
-              const dist  = (a.distance / 1609.34).toFixed(1);
-              const hr    = a.average_heartrate ? Math.round(a.average_heartrate) : null;
-              const date  = a.start_date_local?.substring(5, 10) ?? '';
-              const color = TYPE_COLOR_MAP[type] || TOKENS.green;
-              return (
-                <div
-                  key={a.id}
-                  className="flex items-center gap-2.5 py-2"
-                  style={{
-                    borderBottom: i < recentRuns.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}
-                >
-                  <PixelIcon
-                    name={TYPE_GLYPH_MAP[type] || 'runner'}
-                    size={12}
-                    color={color}
-                    className="flex-shrink-0"
-                  />
-                  <span className="flex-1 text-sm truncate" style={{ color: 'var(--text-primary)' }}>{a.name}</span>
-                  <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{date}</span>
-                  <span className={chipClass(type) + ' flex-shrink-0 hidden sm:inline-block'}>{type}</span>
-                  <span className="text-xs font-mono flex-shrink-0" style={{ color: TOKENS.green, minWidth: 48, textAlign: 'right' }}>{pace}</span>
-                  {hr && <span className="text-xs font-mono flex-shrink-0" style={{ color: TOKENS.red, minWidth: 44, textAlign: 'right' }}>{hr}</span>}
-                  <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>{dist} mi</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -503,7 +452,7 @@ export default function PaceTab() {
   return (
     <div>
       <PaceDashboard runs={runs} zones={zones} typeById={typeById} />
-      <PRsAndRecents runs={runs} typeById={typeById} />
+      <PersonalRecords runs={runs} />
     </div>
   );
 }

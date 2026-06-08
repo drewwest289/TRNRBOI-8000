@@ -35,6 +35,21 @@ export const TRAINING_PACE_FACTORS = [
   { label: 'Interval',  factor: 0.88, note: 'Hard effort' },
 ];
 
+/**
+ * Strava runs at least as long as targetM, sorted fastest-pace-first
+ * (by average_speed desc). PRs are estimated by pairing the fastest run's
+ * average_speed with targetM — shared so the Dashboard and Pace tabs agree
+ * on personal records instead of each running their own match/estimate logic.
+ */
+export function prCandidates(runs, targetM) {
+  return runs
+    .filter(a => {
+      const sport = (a.sport_type || a.type || '').toLowerCase();
+      return sport === 'run' && a.distance >= targetM * 0.95 && a.elapsed_time > 0 && a.average_speed > 0;
+    })
+    .sort((a, b) => b.average_speed - a.average_speed);
+}
+
 export function formatPaceTick(value) {
   const min = Math.floor(value);
   const sec = Math.round((value - min) * 60);

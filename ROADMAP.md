@@ -2,33 +2,12 @@
 
 ## Near term
 
-### Consolidate activity tracking onto the Strava API
-Remove the duplicate activity-tracking system. The app currently maintains two parallel sources of truth: a manual `runs` table (populated via the "Log a run" form and a manual Strava-import flow in `StravaCards`) and live Strava API pulls (used directly by the Dashboard and Pace tabs). This is why the homepage activity breakdown can disagree with the Log/History views — it reads fresh from Strava while edits land only in the `runs` table.
-- Make Strava the single source of truth for actual activity data; auto-sync activities server-side instead of requiring a manual "import" step in `StravaCards`
-- Remove (or significantly shrink) the manual "Log a run" form — keep it only for genuinely non-Strava entries (e.g. cross-training not tracked on Strava), if needed at all
-- Repoint `LogTab`, `HistoryTab`, `WeekGrid`/`PlanTab` completion stats, and the Dashboard activity breakdown to read from the same merged dataset so they can never disagree
-- Keep a thin local-overrides table for things Strava can't represent (notes, rest days, manual edits/corrections) rather than a full duplicate `runs` record per activity
-- Migrate/reconcile existing manually-logged and imported `runs` rows so no history is lost
-- Audit `strava_id` matching/dedupe logic (`checkDupe` in `StravaCards.jsx`) — much of it becomes unnecessary once import is replaced by sync
-
-### ✅ Strava all-time dashboard — Done
-Populate the existing dashboard tab with lifetime stats, personal records, and activity breakdowns pulled from the Strava API.
-- Use `GET /api/strava/athlete` for profile and lifetime totals
-- Use `GET /api/strava/activities` for aggregated breakdowns
-- Display total runs, total miles, avg pace, best efforts/PRs
-
 ### Explore all available Strava data
 Audit all available Strava API endpoints and surface more data throughout the app.
-- Segments, splits, cadence, elevation, gear
+- Segments, splits, cadence, elevation, 
 - Per-activity detail views with richer stream data
 - Identify any data currently unused that would be valuable to display
 
-### Skip day + schedule adjust
-Allow the user to mark a scheduled run as skipped and have the training plan automatically adjust.
-- Add a "skip" action to each day on the Plan tab
-- When skipped, redistribute the missed workout later in the schedule
-- Account for taper weeks and race day proximity when rescheduling
-- More clarity between goal and actual result on cards
 
 ### Added by Drew
 Small things I have noticed.
@@ -38,13 +17,39 @@ Small things I have noticed.
 - Recent runs list is probably unnessesary on the pase tab.
 - change the Pace tab name to Stats
 - this is probably bigger, but I need an admin side of things now that I have more people connected. I created a test account that I want to remove now. And would like the ability to remove users if I want to.
+- colors for the pace trend dont match. I think it would be good to have 
 
-## Longer term
+Status key: [ ] todo · [~] in-progress · [x] done · [!] blocked
+Work items top-to-bottom within each phase unless otherwise directed.
 
-### ✅ Multi-user support — Done
-Open the app beyond a single user so others can use TRNR with their own Strava accounts.
-- User authentication (login/signup)
-- Per-user data isolation
-- Individual Strava OAuth flow per user
-- Persistent token storage per user (currently tokens are single-user, stored via Render env vars)
-- Consider moving off free Render tier to support persistent storage at scale
+
+Phase 1 — Polish & Fixes (Quick wins, frontend-only)
+
+ [ ] Tempo color fix — Tempo is showing purple in the activity breakdown on the dashboard. It should match the correct workout-type color (red). Check the color mapping object and align it with the rest of the chart.
+     Note: TYPE_COLOR already maps 'Tempo' → red and the OneTruth merge now resolves every activity's type through one shared classifier, so this may already be fixed as a side effect — needs a visual recheck against live Strava data, not a code change.
+ [x] Pace tab: clarify "Pace by Workout Type" — Added a "Average pace across logged runs of each type" subtitle under the section label.
+ [x] Pace tab: investigate PR mismatch — Confirmed it was a real data bug: Dashboard and Pace tab used two different PR algorithms (different distance-match windows and time calculations). Extracted a shared `prCandidates` helper into lib/pace.js and pointed both tabs at it, so they now agree.
+ [x] Pace tab: remove Recent Runs list — Removed the section and its now-unused helpers (TYPE_GLYPH_MAP, chipClass/PixelIcon imports).
+ [x] Rename "Pace" tab to "Stats" — Updated the nav label (kept the internal `pace` id/route to avoid touching routing).
+ [ ] Pace trend colors — description was incomplete ("I think it would be good to have "), so left untouched. The chart currently uses green for pace / red for HR, which matches brand tokens — clarify what specifically looks wrong before changing it.
+
+
+Phase 2 — Admin & User Management (Requires backend work on Render)
+
+ Admin panel — protected route — Create a frontend-only admin route (e.g. /admin) that is only accessible to the owner account. Do not expose it in nav.
+ Admin panel — user list — Display all connected users with basic info (name, join date, last activity sync).
+ Admin panel — remove user — Add ability to delete/disconnect a user from the app. This requires a delete endpoint on the Render backend that removes the user's stored tokens and data.
+ Remove test account — Once the delete flow is working, use it to remove the existing test account.
+
+
+Phase 3 — Richer Strava Data
+
+ Audit available Strava endpoints — Review the full Strava API surface and document which endpoints are currently used vs. available. Identify high-value unused data (segments, splits, cadence, elevation, stream data).
+ Per-activity detail view — Build a drill-down view for individual activities surfacing richer stream data: splits, elevation profile, cadence, heart rate over time.
+ Surface additional data on dashboard — Based on audit findings, add the most valuable unused data points to existing views.
+
+
+Backlog / Notes
+
+Admin panel assumes the Render backend has a concept of "users" stored server-side. Verify this before building the frontend — if tokens are only stored client-side today, backend work is required first.
+Pace trend color note was incomplete at time of writing — revisit before implementing Phase 1 color fix.

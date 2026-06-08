@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS, TYPE_COLOR, TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
 import { useActivities } from '../../hooks/useActivities';
-import { paceStr } from '../../lib/pace';
+import { paceStr, prCandidates } from '../../lib/pace';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,17 +63,10 @@ function computePRs(activities) {
     .map(a => a.raw);
 
   return PR_TARGETS.map(({ name, targetM, goalSecs, goalLabel, paceUnit }) => {
-    // Include any run at least as long as the target distance.
-    // Sort by best average speed (fastest pace) so longer runs that were run
-    // at a faster pace beat shorter slower ones.
-    const runs = stravaRuns.filter(a => {
-      const sport = (a.sport_type || a.type || '').toLowerCase();
-      return sport === 'run' && a.distance >= targetM * 0.95 && a.elapsed_time > 0 && a.average_speed > 0;
-    });
-    if (!runs.length) return { name, time: null, date: null, pace: null, elapsedSecs: null, top3: [], goalSecs, goalLabel };
+    const sorted = prCandidates(stravaRuns, targetM);
+    if (!sorted.length) return { name, time: null, date: null, pace: null, elapsedSecs: null, top3: [], goalSecs, goalLabel };
 
     // Best = fastest average speed (proxy for best pace at that distance).
-    const sorted = [...runs].sort((a, b) => b.average_speed - a.average_speed);
     const best = sorted[0];
 
     // Estimate time over the target distance at the best pace.

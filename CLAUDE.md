@@ -14,3 +14,6 @@
 ## Key conventions
 - All week/date calculations based on training start date stored in localStorage
 - No hardcoded week numbers anywhere
+
+## Roadmap
+- See ROADMAP.md for current priorities. Work items are ordered - complete phase 1 befoer moving to phase 2.

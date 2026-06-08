@@ -4,7 +4,7 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'plan',      label: 'Plan',      Icon: Calendar },
   { id: 'log',       label: 'Log',       Icon: Activity },
-  { id: 'pace',      label: 'Pace',      Icon: Clock },
+  { id: 'pace',      label: 'Stats',     Icon: Clock },
   { id: 'team',      label: 'Team',      Icon: Users },
   { id: 'history',   label: 'History',   Icon: BarChart2 },
 ];
