@@ -55,7 +55,7 @@ export default function App() {
         {/* Header */}
         <header className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="TRNRBOI 8000" style={{ width: 48, height: 48, imageRendering: 'pixelated' }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="TRNRBOI 8000" style={{ width: 48, height: 48, imageRendering: 'pixelated' }} />
             <div>
               <h1
                 className="text-white tracking-tight"
