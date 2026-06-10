@@ -31,7 +31,13 @@ export default function Nav({ active, onChange }) {
   return (
     <nav
       className="flex mb-6 overflow-x-auto"
-      style={{ borderBottom: '1px solid var(--green)' }}
+      style={{
+        borderBottom: '1px solid var(--green)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+        background: 'var(--bg-primary)',
+      }}
     >
       {TABS.map(({ id, label, Icon }) => {
         const isActive = active === id;

@@ -67,12 +67,14 @@ export default function MileageChart({ runs, currentWeek, totalWeeks = 16, abili
           ))}
         </Bar>
         <Bar dataKey="actual" radius={[0, 0, 0, 0]}>
-          {data.map((entry, i) => (
-            <Cell
-              key={i}
-              fill={entry.isRace ? TOKENS.purple : TOKENS.green}
-            />
-          ))}
+          {data.map((entry, i) => {
+            // Only judge weeks that have happened (or already have logged miles) —
+            // future weeks with 0 actual aren't "missed" yet.
+            const isEvaluated = currentWeek ? entry.weekNum <= currentWeek : entry.actual > 0;
+            const goalMet = entry.planned > 0 ? entry.actual >= entry.planned : true;
+            const fill = !isEvaluated || goalMet ? TOKENS.green : TOKENS.red;
+            return <Cell key={i} fill={fill} />;
+          })}
         </Bar>
       </BarChart>
     </ResponsiveContainer>

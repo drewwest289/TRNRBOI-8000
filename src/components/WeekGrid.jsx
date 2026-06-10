@@ -41,6 +41,7 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, t
         const hasActiveLog = logs.some(l => l.type !== 'Rest');
         const hasRestLog   = logs.length > 0 && !hasActiveLog;
         const hasDone      = logs.length > 0;
+        const isPast       = dateStr < todayStr;
 
         const borderColor = hasActiveLog && isRest ? TOKENS.red
           : hasActiveLog                            ? TYPE_COLOR[type] ?? TOKENS.border
@@ -113,10 +114,21 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, t
                 {logs.reduce((s, r) => s + r.distMi, 0).toFixed(1)}mi
               </div>
             )}
-            {hasRestLog && (
+            {hasRestLog && !isRest && (
               <div className="flex flex-col items-center mt-1 gap-0.5">
                 <PixelIcon name="close" size={10} color={TOKENS.textMuted} />
                 <span className="text-xs font-bold" style={{ color: TOKENS.textMuted }}>skipped</span>
+              </div>
+            )}
+            {hasRestLog && isRest && (
+              <div className="flex flex-col items-center mt-1 gap-0.5">
+                <PixelIcon name="check" size={10} color={TOKENS.green} />
+                <span className="text-xs font-bold" style={{ color: TOKENS.green }}>rest</span>
+              </div>
+            )}
+            {!hasDone && !isRest && isPast && (
+              <div className="text-xs font-bold mt-1" style={{ color: TOKENS.textMuted, opacity: 0.6 }}>
+                missed
               </div>
             )}
           </div>

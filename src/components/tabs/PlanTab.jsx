@@ -148,9 +148,9 @@ export default function PlanTab({ plan }) {
 
       {/* Week navigation + grid */}
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="section-label mb-0">Week schedule</div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Settings gear */}
             <button
               className="btn-icon"
@@ -218,16 +218,20 @@ export default function PlanTab({ plan }) {
 
       {/* Mileage overview chart */}
       <div className="card">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="section-label mb-0">{totalWeeks}-week mileage overview</div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-2" style={{ backgroundColor: 'rgba(124,255,158,0.25)' }} />
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>PLANNED</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-2" style={{ backgroundColor: TOKENS.green }} />
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>LOGGED</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>GOAL MET</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2" style={{ backgroundColor: TOKENS.red }} />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>GOAL MISSED</span>
             </div>
           </div>
         </div>

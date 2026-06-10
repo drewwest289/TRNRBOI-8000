@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { Plus, Trash2 } from '../../icons/PixelIcons';
+import { ChevronRight } from '../../icons/PixelIcons-extra';
 import {
   useActivities, addManualActivity, deleteManualActivity, updateManualActivity,
   setActivityOverride, TYPE_OPTIONS,
@@ -436,7 +437,7 @@ export default function HistoryTab() {
                   key={r.id}
                   className="grid gap-2 items-center group"
                   style={{
-                    gridTemplateColumns: '76px 1fr auto 52px 52px 28px',
+                    gridTemplateColumns: '76px 1fr auto 52px 52px 18px 28px',
                     minHeight: '48px',
                     borderBottom: '1px solid var(--border)',
                     backgroundColor: idx % 2 === 0 ? 'var(--bg-nested)' : 'transparent',
@@ -467,6 +468,15 @@ export default function HistoryTab() {
                   <div className="text-sm font-bold text-right pr-1" style={{ color: 'var(--text-primary)' }}>
                     {r.distMi.toFixed(1)} mi
                   </div>
+                  <button
+                    onClick={() => setActiveRun(r)}
+                    className="flex items-center justify-center"
+                    style={{ color: 'var(--text-muted)' }}
+                    aria-label="View details"
+                    title="View details"
+                  >
+                    <ChevronRight size={12} />
+                  </button>
                   {r.source === 'manual' ? (
                     <button
                       onClick={() => handleDeleteRun(r.id)}

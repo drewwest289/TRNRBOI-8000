@@ -662,6 +662,7 @@ div.rounded-lg {
 .gb-screen {
   position: relative; flex: 1; min-height: 0; overflow: hidden; padding: 16px 17px;
   background: var(--scr-bg); color: var(--scr-text);
+  --bg-primary: var(--scr-bg);
   background-image:
     radial-gradient(120% 80% at 50% -10%, var(--scr-glow), transparent 60%),
     linear-gradient(var(--grid-line) 1px, transparent 1px),

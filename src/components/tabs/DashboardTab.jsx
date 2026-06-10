@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapPin, ChevronDown, ChevronUp } from 'lucide-react';
-import { RefreshCw, Users } from '../../icons/PixelIcons';
+import { RefreshCw, Users, Runner, Clock } from '../../icons/PixelIcons';
+import { Ruler } from '../../icons/PixelIcons-extra';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS, TYPE_COLOR, TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
@@ -138,13 +139,16 @@ function Skeleton({ className = '' }) {
   return <div className={`animate-pulse bg-slate-800 rounded-lg ${className}`} />;
 }
 
-function MetricCard({ label, value, sub }) {
+function MetricCard({ label, value, sub, color, Icon }) {
   return (
     <div className="bg-slate-800 rounded-xl p-4">
-      <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
+      <div className="flex items-center gap-1.5 mb-1">
+        {Icon && <Icon size={11} color={color || TOKENS.textMuted} />}
+        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</div>
+      </div>
       <div
         className="text-2xl font-semibold"
-        style={{ fontFamily: '"Press Start 2P", monospace', color: 'var(--green)' }}
+        style={{ fontFamily: '"Press Start 2P", monospace', color: color || 'var(--green)' }}
       >
         {value}
       </div>
@@ -185,8 +189,12 @@ function PRRow({ pr }) {
               </span>
             )}
             {pr.top3.length > 1 && (
-              <span style={{ color: 'var(--text-muted)', lineHeight: 1 }}>
-                {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1"
+                style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
+              >
+                {expanded ? 'Hide top 3' : 'View top 3'}
+                {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
               </span>
             )}
           </div>
@@ -421,17 +429,23 @@ export default function DashboardTab() {
             <MetricCard
               label="Total runs"
               value={(allTotals.count ?? 0).toLocaleString()}
+              color={TOKENS.green}
+              Icon={Runner}
             />
             <MetricCard
               label="Total miles"
               value={allTotals.distance
                 ? metersToMiles(allTotals.distance).toLocaleString(undefined, { maximumFractionDigits: 0 })
                 : '—'}
+              color={TOKENS.blue}
+              Icon={Ruler}
             />
             <MetricCard
               label="Total time"
               value={allTotals.moving_time ? formatHours(allTotals.moving_time) : '—'}
               sub="hours"
+              color={TOKENS.purple}
+              Icon={Clock}
             />
             <MetricCard
               label="Elevation gain"
@@ -439,6 +453,8 @@ export default function DashboardTab() {
                 ? metersToFeet(allTotals.elevation_gain).toLocaleString(undefined, { maximumFractionDigits: 0 })
                 : '—'}
               sub="feet"
+              color={TOKENS.orange}
+              Icon={ChevronUp}
             />
           </div>
         </div>
