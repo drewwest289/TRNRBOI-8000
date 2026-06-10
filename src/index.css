@@ -591,6 +591,7 @@ div.rounded-lg {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -683,6 +684,9 @@ div.rounded-lg {
   -ms-overflow-style: none;
 }
 .gb-sc::-webkit-scrollbar { display: none; width: 0; height: 0; }
+/* App content renders at its normal mobile width, then is zoomed down to fit
+   the device's narrower screen — keeps the existing layouts from overlapping. */
+.gb-sc-inner { flex: 1; }
 
 /* ── Boot splash ──────────────────────────────────────────────────────────── */
 .gb-splash {

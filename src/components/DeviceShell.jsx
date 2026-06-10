@@ -10,7 +10,13 @@ const PALETTES = [
 const PALETTE_KEY = 'trnr_gb_palette';
 const DEVICE_W = 392;
 const DEVICE_H = 844;
-const MARGIN = 48;
+const MARGIN = 16;
+// Interior width of the screen (device minus device/bezel/screen padding),
+// and the width the app's layout assumes — content renders at CONTENT_W
+// then is zoomed down to fit so it doesn't overflow/overlap.
+const SCREEN_INTERIOR_W = DEVICE_W - 40 - 36 - 34;
+const CONTENT_W = 380;
+const CONTENT_SCALE = SCREEN_INTERIOR_W / CONTENT_W;
 const KEY_TO_ACTION = {
   ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
   a: 'a', A: 'a', b: 'b', B: 'b', Enter: 'start', Shift: 'select',
@@ -45,12 +51,18 @@ export default function DeviceShell({ children, onDpad, onA, onB }) {
 
   useEffect(() => {
     function fit() {
-      const s = Math.min((window.innerWidth - MARGIN) / DEVICE_W, (window.innerHeight - MARGIN) / DEVICE_H);
-      setScale(Math.min(s, 1.25));
+      const vh = window.visualViewport?.height ?? window.innerHeight;
+      const vw = window.visualViewport?.width ?? window.innerWidth;
+      const s = Math.min((vw - MARGIN) / DEVICE_W, (vh - MARGIN) / DEVICE_H);
+      setScale(Math.min(s, 1.4));
     }
     fit();
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    window.visualViewport?.addEventListener('resize', fit);
+    return () => {
+      window.removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('resize', fit);
+    };
   }, []);
 
   function showToast(msg) {
@@ -117,7 +129,11 @@ export default function DeviceShell({ children, onDpad, onA, onB }) {
             <div className="gb-screen" ref={screenRef}>
               <div className={`gb-toast${toast ? ' show' : ''}`}>{toast}</div>
               {power ? (
-                <div className="gb-sc">{children}</div>
+                <div className="gb-sc">
+                  <div className="gb-sc-inner" style={{ width: CONTENT_W, zoom: CONTENT_SCALE }}>
+                    {children}
+                  </div>
+                </div>
               ) : (
                 <div className="gb-splash">
                   <div className="gb-logo">TRNRBOI 8000</div>
