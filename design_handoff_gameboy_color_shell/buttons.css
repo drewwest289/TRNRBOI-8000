@@ -1,0 +1,288 @@
+/* ════════════════════════════════════════════════════════════════════════
+   TRNRBOI 8000 — Buttons & Controls
+   Extends the design system (index.css). Two families:
+     • FLAT     — for app chrome. Matches existing .btn / .btn-ghost / .btn-icon.
+     • CHUNKY   — pressable "hardware" keys for hero / primary actions.
+   Plus a magenta accent (A/B keys, special actions) and console widgets
+   (D-pad, START / SELECT, power toggle, stepper, segmented, spinner).
+   All square-cornered to match the system; A/B keys are the one round
+   exception, echoing the physical buttons on the device.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* New accent — magenta/crimson from the wordmark + A/B keys */
+  --magenta:      #FF4D8D;
+  --magenta-deep: #A81A52;
+
+  /* "Deep" shades drive the chunky-key bevel (the molded plastic edge) */
+  --green-deep:   #2F9E55;
+  --blue-deep:    #1F5FAE;
+  --red-deep:     #B82F2F;
+  --yellow-deep:  #B8902A;
+  --key-face:     #3A4658;   /* dark plastic key (D-pad / SELECT / START) */
+  --key-deep:     #1A2230;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   CHUNKY PRESSABLE KEY
+   Solid face + hard bottom bevel (no gradients). Travels down on press.
+   ════════════════════════════════════════════════════════════════════════ */
+.btn-chunky {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bg-primary);
+  background: var(--green);
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 5px 0 0 var(--green-deep), 0 5px 0 2px var(--bg-primary);
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: none !important;
+}
+.btn-chunky:hover { filter: brightness(1.06); }
+.btn-chunky:active {
+  transform: translateY(5px);
+  box-shadow: 0 0 0 2px var(--bg-primary);
+}
+.btn-chunky:disabled {
+  background: var(--bg-nested);
+  color: var(--text-muted);
+  box-shadow: 0 5px 0 0 var(--border), 0 5px 0 2px var(--bg-primary);
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* Color variants */
+.btn-chunky.magenta { background: var(--magenta); box-shadow: 0 5px 0 0 var(--magenta-deep), 0 5px 0 2px var(--bg-primary); color: #fff; }
+.btn-chunky.blue    { background: var(--blue);    box-shadow: 0 5px 0 0 var(--blue-deep),    0 5px 0 2px var(--bg-primary); }
+.btn-chunky.danger  { background: var(--red);     box-shadow: 0 5px 0 0 var(--red-deep),     0 5px 0 2px var(--bg-primary); color: #fff; }
+.btn-chunky.magenta:active,
+.btn-chunky.blue:active,
+.btn-chunky.danger:active { transform: translateY(5px); box-shadow: 0 0 0 2px var(--bg-primary); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   A / B ACTION KEYS  — round magenta hardware buttons (logo echo)
+   ════════════════════════════════════════════════════════════════════════ */
+.ab-key {
+  width: 56px;
+  height: 56px;
+  border-radius: 50% !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  color: #fff;
+  background: var(--magenta);
+  border: 2px solid var(--magenta-deep);
+  box-shadow: 0 5px 0 0 var(--magenta-deep);
+  cursor: pointer;
+  user-select: none;
+  transition: none !important;
+}
+.ab-key:hover  { filter: brightness(1.08); }
+.ab-key:active { transform: translateY(5px); box-shadow: none; }
+.ab-key.ghost  { background: var(--bg-panel); color: var(--magenta); border-color: var(--magenta); box-shadow: 0 5px 0 0 var(--magenta-deep); }
+.ab-pair { display: inline-flex; align-items: flex-end; gap: 16px; }
+.ab-pair .ab-key.lifted { transform: translateY(-12px); }  /* A sits higher, like the device */
+.ab-label { display: block; text-align: center; font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em; margin-top: 8px; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   D-PAD  — directional control. Markup: .dpad > 4 .dpad-btn + .dpad-hub
+   ════════════════════════════════════════════════════════════════════════ */
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  grid-template-rows: repeat(3, 30px);
+  width: 90px;
+  height: 90px;
+}
+.dpad-btn {
+  background: var(--key-face);
+  border: 2px solid var(--key-deep);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 3px 0 0 var(--key-deep);
+  transition: none !important;
+}
+.dpad-btn:hover  { color: var(--green); }
+.dpad-btn:active { transform: translateY(3px); box-shadow: none; }
+.dpad-up    { grid-area: 1 / 2; }
+.dpad-left  { grid-area: 2 / 1; }
+.dpad-right { grid-area: 2 / 3; }
+.dpad-down  { grid-area: 3 / 2; }
+.dpad-hub   { grid-area: 2 / 2; background: var(--key-deep); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   START / SELECT  — angled console pills
+   ════════════════════════════════════════════════════════════════════════ */
+.pill-key {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.pill-key .cap-el {
+  width: 58px;
+  height: 18px;
+  background: var(--key-face);
+  border: 2px solid var(--key-deep);
+  box-shadow: 0 3px 0 0 var(--key-deep);
+  transform: skewX(-22deg);
+  transition: none !important;
+}
+.pill-key:hover .cap-el  { background: #46546a; }
+.pill-key:active .cap-el { transform: skewX(-22deg) translateY(3px); box-shadow: none; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   POWER TOGGLE  — on/off switch with LED
+   ════════════════════════════════════════════════════════════════════════ */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-track {
+  width: 52px;
+  height: 26px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  position: relative;
+  transition: none !important;
+}
+.toggle-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 20px;
+  height: 20px;
+  background: var(--text-muted);
+  transition: none !important;
+}
+.toggle-led {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.toggle.on .toggle-track { border-color: var(--green); box-shadow: var(--glow-low); }
+.toggle.on .toggle-knob  { left: 27px; background: var(--green); box-shadow: 0 0 6px var(--green); }
+.toggle.on .toggle-led   { color: var(--green); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   SEGMENTED CONTROL  — small inline tab/switch
+   ════════════════════════════════════════════════════════════════════════ */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--green);
+}
+.seg button {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: none !important;
+}
+.seg button + button { border-left: 1px solid var(--green); }
+.seg button.on    { background: var(--green); color: var(--bg-primary); }
+.seg button:hover:not(.on) { color: var(--green); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   NUMBER STEPPER  —  [ − ]  value  [ + ]
+   ════════════════════════════════════════════════════════════════════════ */
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+}
+.stepper button {
+  width: 38px;
+  background: var(--bg-nested);
+  color: var(--green);
+  border: none;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: none !important;
+}
+.stepper button:hover  { background: var(--green); color: var(--bg-primary); }
+.stepper button:active { filter: brightness(0.85); }
+.stepper .val {
+  min-width: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 0 6px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   ICON + LABEL PILL  — compact action with leading glyph
+   ════════════════════════════════════════════════════════════════════════ */
+.icon-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.85rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  background: var(--bg-nested);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: none !important;
+}
+.icon-pill:hover { border-color: var(--green); color: var(--green); }
+.icon-pill svg   { display: block; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   LOADING  — button with pixel spinner (4-step rotation)
+   ════════════════════════════════════════════════════════════════════════ */
+.spinner {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  border: 3px solid currentColor;
+  border-right-color: transparent;
+  animation: trnr-spin 0.6s steps(8) infinite;
+}
+@keyframes trnr-spin { to { transform: rotate(360deg); } }
+.btn[disabled] .spinner,
+.btn-chunky[disabled] .spinner { opacity: 0.7; }

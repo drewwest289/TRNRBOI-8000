@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRNRBOI 8000 — iPhone Fit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link href="buttons.css" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary:#0B0F1A; --bg-panel:#111827; --bg-nested:#1A2232; --border:#283442;
+    --text-primary:#E6F5E6; --text-muted:#8AA0B2;
+    --green:#7CFF9E; --blue:#4DA3FF; --purple:#B36BFF; --red:#FF5C5C; --orange:#FF8C42; --yellow:#FFD44D;
+    --magenta:#FF5CA8;
+    --grid-line:#1D2433;
+    --glow-mid:0 0 8px rgba(124,255,158,0.40);
+    /* device plastics — translucent grape (Game Boy Color) */
+    --shell-deep:#5C3F8A;
+    --bezel:#2a2230; --bezel-edge:#191320;
+    --label-ink:#2e1c47;
+    /* color screen palette (set by JS / SELECT) */
+    --scr-bg:#0B0F1A; --scr-text:#E8F0FA; --scr-glow:rgba(179,107,255,0.16);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    font-family:'Space Mono', monospace; color:var(--text-primary);
+    background-color:var(--bg-primary);
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:24px 24px;
+    min-height:100%; display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,0.12) 3px 4px); }
+
+  /* viewport scaler — keeps the whole tall device on screen at any size */
+  .viewport { width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; }
+  .scaler { transform-origin:center center; }
+
+  /* ════════ DEVICE — iPhone portrait proportions (≈ 9 : 19.5) ════════ */
+  .device {
+    width:392px; height:844px; padding:18px 20px 22px; position:relative;
+    display:flex; flex-direction:column;
+    background:
+      linear-gradient(158deg, rgba(196,170,226,0.50), rgba(128,94,176,0.46) 44%, rgba(94,63,138,0.56));
+    border-radius:54px;
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,0.62),
+      inset 0 -8px 20px rgba(38,18,68,0.45),
+      inset 0 0 0 2px rgba(168,140,205,0.55),
+      inset 0 0 70px rgba(70,40,112,0.32),
+      0 30px 70px rgba(22,10,42,0.65);
+  }
+  .device::before { /* glossy diagonal sheen of the translucent plastic */
+    content:''; position:absolute; inset:0; border-radius:54px; pointer-events:none; z-index:0;
+    background:linear-gradient(150deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.06) 18%, transparent 38%);
+  }
+  .device > * { position:relative; z-index:1; }
+  .device::after { /* inner shell edge, follows the phone radius */
+    content:''; position:absolute; inset:7px; border-radius:48px;
+    border:1px solid rgba(255,255,255,0.22); pointer-events:none; z-index:2;
+  }
+
+  /* top bezel strip */
+  .topstrip { display:flex; align-items:center; gap:10px; padding:2px 6px 12px; }
+  .led { width:11px; height:11px; border-radius:50%; background:#5a1414; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.3); flex-shrink:0; }
+  .led.on { background:var(--red); box-shadow:0 0 8px var(--red), inset 0 0 0 1px rgba(0,0,0,0.25); }
+  .led-label { font-size:8px; letter-spacing:0.14em; color:var(--label-ink); font-weight:700; }
+  .tag { flex:1; text-align:center; font-size:9px; letter-spacing:0.18em; color:var(--label-ink); font-weight:700; }
+  .tag .acc { color:var(--magenta); }
+
+  /* screen bezel — grows to fill the tall body */
+  .bezel {
+    background:var(--bezel); padding:18px 18px 20px; border-radius:18px;
+    box-shadow:inset 0 3px 8px rgba(0,0,0,0.6), inset 0 0 0 2px var(--bezel-edge), 0 1px 0 rgba(255,255,255,0.4);
+    display:flex; flex-direction:column;
+  }
+  .bezel .micro { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .bezel .micro span { font-size:7px; letter-spacing:0.16em; color:#7a7a85; font-weight:700; }
+  .bezel .micro .dot { width:5px; height:5px; border-radius:50%; background:#7a7a85; }
+
+  /* THE SCREEN — full-color backlit display (Game Boy Color) */
+  .screen { position:relative; height:452px; overflow:hidden; padding:16px 17px;
+    background:var(--scr-bg); color:var(--scr-text);
+    background-image:
+      radial-gradient(120% 80% at 50% -10%, var(--scr-glow), transparent 60%),
+      linear-gradient(var(--grid-line) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:auto, 16px 16px, 16px 16px;
+    transition:background-color 0.12s steps(1), color 0.12s steps(1);
+  }
+  .screen::before { /* glass reflection of the screen cover */
+    content:''; position:absolute; inset:0; z-index:3; pointer-events:none;
+    background:linear-gradient(150deg, rgba(255,255,255,0.10) 0%, transparent 22%);
+  }
+  .screen::after { /* fine scanlines */
+    content:''; position:absolute; inset:0; z-index:3; pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0.16) 0 2px, transparent 2px 4px);
+  }
+
+  /* screen content */
+  .sc { position:relative; z-index:2; height:100%; display:flex; flex-direction:column; }
+  .sc-head { display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:700; letter-spacing:0.12em; opacity:0.85; }
+  .sc-head .view { display:flex; gap:6px; }
+  .sc-head .view i { width:6px; height:6px; background:currentColor; opacity:0.35; display:block; }
+  .sc-head .view i.on { opacity:1; }
+
+  .lvlbar { height:11px; border:1px solid currentColor; margin:12px 0 0; padding:1px; }
+  .lvlbar > i { display:block; height:100%; background:currentColor; }
+
+  .headline { display:flex; align-items:flex-end; gap:12px; margin-top:14px; }
+  .headline .big { font-family:'Press Start 2P',monospace; font-size:46px; line-height:0.9; }
+  .headline .unit { font-family:'Press Start 2P',monospace; font-size:15px; padding-bottom:5px; }
+  .sub2 { font-size:13px; font-weight:700; letter-spacing:0.08em; margin-top:10px; opacity:0.85; }
+
+  .statrow { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:auto; }
+  .stat { border:1px solid currentColor; padding:11px 2px 9px; display:flex; flex-direction:column; align-items:center; gap:7px; }
+  .stat .v { font-family:'Press Start 2P',monospace; font-size:11px; }
+  .stat .l { font-size:8px; letter-spacing:0.08em; opacity:0.8; }
+
+  /* week strip */
+  .week { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-top:14px; flex:1; }
+  .day { border:1px solid currentColor; opacity:0.55; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:10px 0 8px; }
+  .day.sel { opacity:1; box-shadow:0 0 0 1px currentColor inset; outline:1px solid currentColor; }
+  .day .dn { font-size:11px; font-weight:700; }
+  .day .mi { font-size:9px; }
+  .weekfoot { margin-top:12px; font-size:12px; font-weight:700; letter-spacing:0.06em; display:flex; justify-content:space-between; }
+
+  /* stats view */
+  .bars { display:flex; align-items:flex-end; gap:9px; height:200px; margin-top:14px; padding-bottom:2px; border-bottom:1px solid currentColor; }
+  .bars .b { flex:1; background:currentColor; opacity:0.85; }
+  .barlabels { display:flex; gap:9px; margin-top:6px; }
+  .barlabels span { flex:1; text-align:center; font-size:9px; opacity:0.8; }
+  .statlist { margin-top:12px; }
+  .statlist .r { display:flex; justify-content:space-between; font-size:13px; font-weight:700; letter-spacing:0.06em; padding:6px 0; border-bottom:1px dotted currentColor; }
+
+  /* sleep splash */
+  .splash { position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+            background:#0B0F1A; color:var(--purple); }
+  .splash .logo { font-family:'Press Start 2P',monospace; font-size:18px; color:var(--magenta); text-shadow:0 0 12px rgba(255,92,168,0.5); }
+  .splash .blink { font-size:11px; letter-spacing:0.2em; color:var(--green); animation:bk 1s steps(1) infinite; }
+  @keyframes bk { 50% { opacity:0; } }
+
+  /* toast */
+  .toast { position:absolute; left:50%; top:14px; transform:translateX(-50%); z-index:6;
+    background:var(--green); color:#06210F; font-size:11px; font-weight:700; letter-spacing:0.1em;
+    padding:6px 14px; opacity:0; transition:opacity 0.1s steps(1); box-shadow:0 0 14px rgba(124,255,158,0.4); }
+  .toast.show { opacity:1; }
+
+  /* ── wordmark ── */
+  .wordmark { display:flex; align-items:center; justify-content:center; gap:11px; padding:14px 4px 6px; }
+  .wordmark .run { width:26px; height:26px; }
+  .wordmark .wt { font-family:'Press Start 2P',monospace; font-size:19px; color:var(--label-ink); letter-spacing:0.01em; }
+  .wordmark .n8 { font-family:'Press Start 2P',monospace; font-size:12px; color:var(--magenta); letter-spacing:0.06em; margin-top:6px; }
+
+  /* ── controls deck ── */
+  .deck { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:8px; padding:6px 6px 2px; margin-top:auto; }
+  .deck .mid { display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .startsel { display:flex; gap:18px; }
+  .ab-cluster { display:flex; align-items:flex-end; gap:16px; margin:0 4px 14px 0; }
+  .speaker { position:absolute; right:30px; bottom:26px; display:flex; gap:4px; transform:rotate(-22deg); pointer-events:none; }
+  .speaker i { width:3px; height:22px; background:var(--shell-deep); border-radius:2px; opacity:0.6; }
+  .speaker i:nth-child(2){ height:27px; } .speaker i:nth-child(3){ height:30px; } .speaker i:nth-child(4){ height:27px; } .speaker i:nth-child(5){ height:22px; }
+
+  /* device-scoped control sizing */
+  .device .dpad { width:108px; height:108px; grid-template-columns:repeat(3,36px); grid-template-rows:repeat(3,36px); }
+  .device .ab-key { width:52px; height:52px; }
+  .device .ab-label { color:var(--label-ink); }
+  .device .pill-key { color:var(--label-ink); }
+
+  .hint { position:fixed; bottom:14px; left:0; right:0; text-align:center; color:var(--text-muted); font-size:11px; letter-spacing:0.04em; z-index:10000; }
+  .hint b { color:var(--green); }
+</style>
+</head>
+<body>
+<div class="viewport">
+  <div class="scaler" id="scaler">
+
+    <!-- DEVICE -->
+    <div class="device" id="device">
+      <div class="topstrip">
+        <div class="led on" id="led"></div>
+        <span class="led-label">POWER</span>
+        <span class="tag"><span class="acc">━</span> TRAIN. RUN. LEVEL UP. <span class="acc">━</span></span>
+      </div>
+
+      <div class="bezel">
+        <div class="micro"><span>TRNRBOI</span><span class="dot"></span><span>COLOR · STEREO SOUND</span></div>
+        <div class="screen" id="screen">
+          <div class="toast" id="toast">✓ RUN LOGGED · +120 XP</div>
+          <div class="sc" id="sc"></div>
+          <div class="splash" id="splash" style="display:none">
+            <div class="logo">TRNRBOI 8000</div>
+            <div class="blink">▶ PRESS START</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wordmark">
+        <span class="run" id="wordrun"></span>
+        <span class="wt">TRNRBOI</span>
+        <span class="n8">8000</span>
+      </div>
+
+      <div class="deck">
+        <!-- D-pad -->
+        <div class="dpad">
+          <button class="dpad-btn dpad-up" data-act="up"><span data-ic="chevronup" data-sz="13" data-col="#1A2230"></span></button>
+          <button class="dpad-btn dpad-left" data-act="left"><span data-ic="chevronleft" data-sz="13" data-col="#1A2230"></span></button>
+          <div class="dpad-hub"></div>
+          <button class="dpad-btn dpad-right" data-act="right"><span data-ic="chevronright" data-sz="13" data-col="#1A2230"></span></button>
+          <button class="dpad-btn dpad-down" data-act="down"><span data-ic="chevrondown" data-sz="13" data-col="#1A2230"></span></button>
+        </div>
+
+        <!-- START / SELECT -->
+        <div class="mid">
+          <div class="startsel">
+            <button class="pill-key" data-act="select"><span class="cap-el"></span><span>SELECT</span></button>
+            <button class="pill-key" data-act="start"><span class="cap-el"></span><span>START</span></button>
+          </div>
+        </div>
+
+        <!-- A / B -->
+        <div class="ab-cluster">
+          <div style="text-align:center"><button class="ab-key" data-act="b">B</button><span class="ab-label">BACK</span></div>
+          <div style="text-align:center"><button class="ab-key lifted" data-act="a">A</button><span class="ab-label">LOG</span></div>
+        </div>
+      </div>
+
+      <div class="speaker"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="hint">Click the controls — or use <b>← ↑ → ↓</b>, <b>A</b>, <b>B</b>, <b>Enter</b> (start), <b>Shift</b> (select = swap color palette).</div>
+
+<script src="icon-data.js"></script>
+<script src="icon-data-extra.js"></script>
+<script>
+(function () {
+  var ALL = Object.assign({}, window.TRNR_ICONS || {}, window.TRNR_ICONS_EXTRA || {});
+  var TOKENS = { easy:'green', tempo:'red', long:'purple', cross:'blue', rest:'muted', race:'yellow' };
+  var COLORS = { green:'#7CFF9E', blue:'#4DA3FF', purple:'#B36BFF', red:'#FF5C5C', orange:'#FF8C42', yellow:'#FFD44D', muted:'#8AA0B2' };
+
+  function svg(name, size, color) {
+    var m = ALL[name]; if (!m) return '';
+    var r = '';
+    for (var y=0;y<16;y++){ var row=m[y]||''; for (var x=0;x<16;x++){ if(row[x]&&row[x]!=='.') r+='<rect x="'+x+'" y="'+y+'" width="1" height="1"/>'; } }
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 16 16" fill="'+color+'" shape-rendering="crispEdges" style="display:block">'+r+'</svg>';
+  }
+  // static inline icons (dpad, wordmark)
+  document.querySelectorAll('[data-ic]').forEach(function(el){
+    el.innerHTML = svg(el.getAttribute('data-ic'), +el.getAttribute('data-sz')||14, el.getAttribute('data-col')||'currentColor');
+    el.style.display='inline-flex';
+  });
+  document.getElementById('wordrun').innerHTML = svg('runner', 26, '#2e1c47');
+
+  var WEEK = [
+    { dn:'M', type:'easy',  label:'EASY',  km:'5.0',  pace:'5:42', icon:'runner', xp:120 },
+    { dn:'T', type:'tempo', label:'TEMPO', km:'8.0',  pace:'4:50', icon:'bolt',   xp:210 },
+    { dn:'W', type:'rest',  label:'REST',  km:'—',    pace:'—',    icon:'bed',    xp:0   },
+    { dn:'T', type:'easy',  label:'EASY',  km:'5.0',  pace:'5:38', icon:'runner', xp:120 },
+    { dn:'F', type:'cross', label:'CROSS', km:'45m',  pace:'—',    icon:'bike',   xp:90  },
+    { dn:'S', type:'long',  label:'LONG',  km:'18.0', pace:'5:20', icon:'road',   xp:320 },
+    { dn:'S', type:'rest',  label:'REST',  km:'—',    pace:'—',    icon:'bed',    xp:0   },
+  ];
+
+  // Selectable color-screen palettes (a Game Boy Color nod — SELECT swaps them).
+  // Accent/type colors stay constant so each workout keeps its identity.
+  var PALETTES = [
+    { name:'GRAPE', bg:'#120A24', text:'#ECE4FB', glow:'rgba(179,107,255,0.26)' },
+    { name:'BERRY', bg:'#200A1C', text:'#FCE4EE', glow:'rgba(255,92,168,0.28)' },
+    { name:'OCEAN', bg:'#06141F', text:'#DFF1FF', glow:'rgba(77,163,255,0.28)' },
+  ];
+
+  var state = { power:true, pal:0, view:0, sel:5 }; // view 0 dash 1 week 2 stats
+  var VIEWS = ['DASH','WEEK','STATS'];
+  var screen = document.getElementById('screen');
+  var sc = document.getElementById('sc');
+  var splash = document.getElementById('splash');
+  var toast = document.getElementById('toast');
+
+  function typeColor(t) { return COLORS[TOKENS[t]] || COLORS.green; }
+
+  function dot(i){ return '<i class="'+(i===state.view?'on':'')+'"></i>'; }
+
+  function render() {
+    // power
+    splash.style.display = state.power ? 'none' : 'flex';
+    document.getElementById('led').classList.toggle('on', state.power);
+    // apply color-screen palette
+    var p = PALETTES[state.pal];
+    screen.style.setProperty('--scr-bg', p.bg);
+    screen.style.setProperty('--scr-text', p.text);
+    screen.style.setProperty('--scr-glow', p.glow);
+    if (!state.power) { sc.innerHTML=''; return; }
+
+    var head = '<div class="sc-head"><span>LVL 08 · '+VIEWS[state.view]+'</span><span class="view">'+dot(0)+dot(1)+dot(2)+'</span></div>';
+    var body = '';
+    var d = WEEK[state.sel];
+
+    if (state.view === 0) {
+      body =
+        '<div class="lvlbar"><i style="width:62%;background:'+COLORS.green+'"></i></div>' +
+        '<div class="headline"><span class="big">'+(d.km==='—'?'REST':d.km)+'</span><span class="unit">'+(d.km==='—'?'':'KM')+'</span></div>' +
+        '<div class="sub2">'+d.dn+' · '+d.label+(d.pace!=='—'?'  ·  PACE '+d.pace:'')+'</div>' +
+        '<div class="statrow">' +
+          stat('distance', d.km==='—'?'0':d.km, 'KM', 'easy') +
+          stat('clock', d.pace==='—'?'—':d.pace, 'PACE', 'easy') +
+          stat('calories', d.xp? Math.round(d.xp*3.4): '0', 'KCAL', 'tempo') +
+          stat('achieve', '+'+d.xp, 'XP', 'long') +
+        '</div>';
+    } else if (state.view === 1) {
+      var cells = WEEK.map(function(w,i){
+        return '<div class="day'+(i===state.sel?' sel':'')+'">' +
+          '<span class="dn">'+w.dn+'</span>' +
+          svg(w.icon, 18, typeColor(w.type)) +
+          '<span class="mi">'+w.km+'</span></div>';
+      }).join('');
+      var total = WEEK.reduce(function(a,w){ var n=parseFloat(w.km); return a+(isNaN(n)?0:n); },0);
+      body = '<div class="week">'+cells+'</div>' +
+        '<div class="weekfoot"><span>'+WEEK[state.sel].dn+' · '+WEEK[state.sel].label+'</span><span>'+total.toFixed(1)+' MI WK</span></div>';
+    } else {
+      var maxkm = 18;
+      var bars = WEEK.map(function(w){ var n=parseFloat(w.km); n=isNaN(n)?0:n; return '<div class="b" style="height:'+Math.max(4,(n/maxkm)*100)+'%;background:'+typeColor(w.type)+';opacity:1"></div>'; }).join('');
+      var labs = WEEK.map(function(w){ return '<span>'+w.dn+'</span>'; }).join('');
+      var total = WEEK.reduce(function(a,w){ var n=parseFloat(w.km); return a+(isNaN(n)?0:n); },0);
+      var xp = WEEK.reduce(function(a,w){ return a+w.xp; },0);
+      body = '<div class="bars">'+bars+'</div><div class="barlabels">'+labs+'</div>' +
+        '<div class="statlist">' +
+          '<div class="r"><span>WEEKLY LOAD</span><span>'+total.toFixed(1)+' MI</span></div>' +
+          '<div class="r"><span>XP EARNED</span><span>'+xp+'</span></div>' +
+          '<div class="r"><span>NEXT LEVEL</span><span>LVL 09 · 38%</span></div>' +
+        '</div>';
+    }
+    sc.innerHTML = head + body;
+  }
+
+  function stat(icon, v, l, type) {
+    return '<div class="stat">'+svg(icon, 20, typeColor(type))+'<span class="v">'+v+'</span><span class="l">'+l+'</span></div>';
+  }
+
+  function showToast() {
+    var d = WEEK[state.sel];
+    toast.textContent = d.km==='—' ? 'REST DAY · NOTHING TO LOG' : '✓ '+d.label+' LOGGED · +'+d.xp+' XP';
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 1300);
+  }
+
+  var ACT = {
+    left:  function(){ if(state.power){ state.sel=(state.sel+6)%7; if(state.view===0)state.view=1; } },
+    right: function(){ if(state.power){ state.sel=(state.sel+1)%7; if(state.view===0)state.view=1; } },
+    up:    function(){ if(state.power) state.view=(state.view+2)%3; },
+    down:  function(){ if(state.power) state.view=(state.view+1)%3; },
+    a:     function(){ if(state.power) showToast(); },
+    b:     function(){ if(state.power) state.view=0; },
+    start: function(){ state.power=!state.power; },
+    select:function(){ if(state.power) state.pal=(state.pal+1)%PALETTES.length; },
+  };
+
+  function press(btn){ if(!btn) return; btn.style.transform='translateY(4px)'; setTimeout(function(){ btn.style.transform=''; },90); }
+
+  document.querySelectorAll('[data-act]').forEach(function(b){
+    b.addEventListener('click', function(){ ACT[b.getAttribute('data-act')](); render(); });
+  });
+
+  var KEY = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down',
+              a:'a', A:'a', b:'b', B:'b', Enter:'start', Shift:'select' };
+  document.addEventListener('keydown', function(e){
+    var act = KEY[e.key]; if(!act) return;
+    e.preventDefault(); ACT[act]();
+    var btn = document.querySelector('[data-act="'+act+'"]'); press(btn);
+    render();
+  });
+
+  // ── fit the tall device to any viewport ──
+  var scaler = document.getElementById('scaler');
+  function fit() {
+    var w = 392, h = 844, margin = 48;
+    var s = Math.min((window.innerWidth - margin) / w, (window.innerHeight - margin) / h);
+    scaler.style.transform = 'scale(' + Math.min(s, 1.25) + ')';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  render();
+})();
+</script>
+</body>
+</html>
