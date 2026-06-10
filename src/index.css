@@ -679,7 +679,10 @@ div.rounded-lg {
   position: relative; z-index: 2; height: 100%;
   display: flex; flex-direction: column;
   overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.gb-sc::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 /* ── Boot splash ──────────────────────────────────────────────────────────── */
 .gb-splash {
@@ -706,10 +709,10 @@ div.rounded-lg {
 .gb-wordmark .gb-n8 { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--magenta); letter-spacing: 0.06em; margin-top: 6px; }
 
 /* ── Controls deck ────────────────────────────────────────────────────────── */
-.gb-deck { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 6px 6px 2px; flex-shrink: 0; }
-.gb-deck .gb-mid { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.gb-startsel { display: flex; gap: 18px; }
-.gb-ab-cluster { display: flex; align-items: flex-end; gap: 16px; margin: 0 4px 14px 0; }
+.gb-deck { display: flex; flex-direction: column; gap: 14px; padding: 4px 6px 2px; flex-shrink: 0; }
+.gb-startsel { display: flex; justify-content: center; gap: 18px; }
+.gb-deck-row { display: flex; align-items: center; justify-content: space-between; }
+.gb-ab-cluster { display: flex; align-items: flex-end; gap: 16px; margin: 0 14px 10px 0; }
 .gb-ab-cluster .ab-key.lifted { transform: translateY(-12px); }
 .gb-speaker { position: absolute; right: 30px; bottom: 26px; display: flex; gap: 4px; transform: rotate(-22deg); pointer-events: none; }
 .gb-speaker i { width: 3px; height: 22px; background: var(--shell-deep); opacity: 0.6; border-radius: 2px !important; }
