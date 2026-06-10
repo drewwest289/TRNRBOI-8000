@@ -134,41 +134,41 @@ export default function DeviceShell({ children, onDpad, onA, onB }) {
           </div>
 
           <div className="gb-deck">
-            <div className="dpad">
-              <button className="dpad-btn dpad-up" data-gb-act="up" onClick={() => handleAction('up')} aria-label="Up">
-                <ChevronUp size={13} color="var(--key-deep)" />
+            <div className="gb-startsel">
+              <button className="pill-key" data-gb-act="select" onClick={() => handleAction('select')}>
+                <span className="cap-el" /><span>SELECT</span>
               </button>
-              <button className="dpad-btn dpad-left" data-gb-act="left" onClick={() => handleAction('left')} aria-label="Left">
-                <ChevronLeft size={13} color="var(--key-deep)" />
-              </button>
-              <div className="dpad-hub" />
-              <button className="dpad-btn dpad-right" data-gb-act="right" onClick={() => handleAction('right')} aria-label="Right">
-                <ChevronRight size={13} color="var(--key-deep)" />
-              </button>
-              <button className="dpad-btn dpad-down" data-gb-act="down" onClick={() => handleAction('down')} aria-label="Down">
-                <ChevronDown size={13} color="var(--key-deep)" />
+              <button className="pill-key" data-gb-act="start" onClick={() => handleAction('start')}>
+                <span className="cap-el" /><span>START</span>
               </button>
             </div>
 
-            <div className="gb-mid">
-              <div className="gb-startsel">
-                <button className="pill-key" data-gb-act="select" onClick={() => handleAction('select')}>
-                  <span className="cap-el" /><span>SELECT</span>
+            <div className="gb-deck-row">
+              <div className="dpad">
+                <button className="dpad-btn dpad-up" data-gb-act="up" onClick={() => handleAction('up')} aria-label="Up">
+                  <ChevronUp size={13} color="var(--key-deep)" />
                 </button>
-                <button className="pill-key" data-gb-act="start" onClick={() => handleAction('start')}>
-                  <span className="cap-el" /><span>START</span>
+                <button className="dpad-btn dpad-left" data-gb-act="left" onClick={() => handleAction('left')} aria-label="Left">
+                  <ChevronLeft size={13} color="var(--key-deep)" />
+                </button>
+                <div className="dpad-hub" />
+                <button className="dpad-btn dpad-right" data-gb-act="right" onClick={() => handleAction('right')} aria-label="Right">
+                  <ChevronRight size={13} color="var(--key-deep)" />
+                </button>
+                <button className="dpad-btn dpad-down" data-gb-act="down" onClick={() => handleAction('down')} aria-label="Down">
+                  <ChevronDown size={13} color="var(--key-deep)" />
                 </button>
               </div>
-            </div>
 
-            <div className="gb-ab-cluster">
-              <div style={{ textAlign: 'center' }}>
-                <button className="ab-key" data-gb-act="b" onClick={() => handleAction('b')}>B</button>
-                <span className="ab-label">BACK</span>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <button className="ab-key lifted" data-gb-act="a" onClick={() => handleAction('a')}>A</button>
-                <span className="ab-label">LOG</span>
+              <div className="gb-ab-cluster">
+                <div style={{ textAlign: 'center' }}>
+                  <button className="ab-key" data-gb-act="b" onClick={() => handleAction('b')}>B</button>
+                  <span className="ab-label">BACK</span>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <button className="ab-key lifted" data-gb-act="a" onClick={() => handleAction('a')}>A</button>
+                  <span className="ab-label">LOG</span>
+                </div>
               </div>
             </div>
           </div>
