@@ -1,6 +1,6 @@
 import { Calendar, Clock, Users, BarChart2, LayoutDashboard } from '../icons/PixelIcons';
 
-const TABS = [
+export const TABS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'plan',      label: 'Plan',      Icon: Calendar },
   { id: 'pace',      label: 'Stats',     Icon: Clock },

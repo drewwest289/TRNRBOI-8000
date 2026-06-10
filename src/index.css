@@ -38,6 +38,15 @@
   --key-face:     #3A4658;
   --key-deep:     #1A2230;
 
+  /* Game Boy Color shell (#gameboy preview route) */
+  --label-ink:  #2e1c47;
+  --bezel:      #2a2230;
+  --bezel-edge: #191320;
+  --shell-deep: #5C3F8A;
+  --scr-bg:     #120A24;
+  --scr-text:   #ECE4FB;
+  --scr-glow:   rgba(179,107,255,0.26);
+
   /* Glow levels */
   --glow-low:    0 0  4px rgba(124,255,158,0.20);
   --glow-mid:    0 0  8px rgba(124,255,158,0.40);
@@ -567,3 +576,155 @@ div.rounded-lg {
   animation: trnr-spin 0.6s steps(8) infinite;
 }
 @keyframes trnr-spin { to { transform: rotate(360deg); } }
+
+/* Keyboard "press" feedback — mirrors the :active states above */
+.dpad-btn.pressed { transform: translateY(3px); box-shadow: none; }
+.ab-key.pressed   { transform: translateY(5px); box-shadow: none; }
+.pill-key.pressed .cap-el { transform: skewX(-22deg) translateY(3px); box-shadow: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Game Boy Color Device Shell — #gameboy preview route
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gb-viewport {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 100;
+  background-color: var(--bg-primary);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.gb-scaler { transform-origin: center center; }
+
+/* ── Device body ──────────────────────────────────────────────────────────── */
+.gb-device {
+  width: 392px;
+  height: 844px;
+  padding: 18px 20px 22px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(158deg, rgba(196,170,226,0.50), rgba(128,94,176,0.46) 44%, rgba(94,63,138,0.56));
+  border-radius: 54px !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.62),
+    inset 0 -8px 20px rgba(38,18,68,0.45),
+    inset 0 0 0 2px rgba(168,140,205,0.55),
+    inset 0 0 70px rgba(70,40,112,0.32),
+    0 30px 70px rgba(22,10,42,0.65);
+}
+.gb-device::before {
+  content: '';
+  position: absolute; inset: 0; border-radius: 54px !important; pointer-events: none; z-index: 0;
+  background: linear-gradient(150deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.06) 18%, transparent 38%);
+}
+.gb-device > * { position: relative; z-index: 1; }
+.gb-device::after {
+  content: '';
+  position: absolute; inset: 7px; border-radius: 48px !important;
+  border: 1px solid rgba(255,255,255,0.22); pointer-events: none; z-index: 2;
+}
+
+/* ── Top strip ────────────────────────────────────────────────────────────── */
+.gb-topstrip { display: flex; align-items: center; gap: 10px; padding: 2px 6px 12px; }
+.gb-led {
+  width: 11px; height: 11px; border-radius: 50% !important;
+  background: #5a1414; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3); flex-shrink: 0;
+}
+.gb-led.on { background: var(--red); box-shadow: 0 0 8px var(--red), inset 0 0 0 1px rgba(0,0,0,0.25); }
+.gb-led-label { font-size: 8px; letter-spacing: 0.14em; color: var(--label-ink); font-weight: 700; }
+.gb-tag { flex: 1; text-align: center; font-size: 9px; letter-spacing: 0.18em; color: var(--label-ink); font-weight: 700; }
+.gb-tag .gb-acc { color: var(--magenta); }
+
+/* ── Screen bezel ─────────────────────────────────────────────────────────── */
+.gb-bezel {
+  background: var(--bezel); padding: 18px 18px 20px; border-radius: 18px !important;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.6), inset 0 0 0 2px var(--bezel-edge), 0 1px 0 rgba(255,255,255,0.4);
+  display: flex; flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.gb-bezel .gb-micro { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
+.gb-bezel .gb-micro span { font-size: 7px; letter-spacing: 0.16em; color: #7a7a85; font-weight: 700; }
+.gb-bezel .gb-micro .gb-dot { width: 5px; height: 5px; border-radius: 50% !important; background: #7a7a85; }
+
+/* ── Screen — full-color backlit display ─────────────────────────────────── */
+.gb-screen {
+  position: relative; flex: 1; min-height: 0; overflow: hidden; padding: 16px 17px;
+  background: var(--scr-bg); color: var(--scr-text);
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, var(--scr-glow), transparent 60%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: auto, 16px 16px, 16px 16px;
+}
+.gb-screen::before {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255,255,255,0.10) 0%, transparent 22%);
+}
+.gb-screen::after {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.16) 0 2px, transparent 2px 4px);
+}
+.gb-sc {
+  position: relative; z-index: 2; height: 100%;
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
+}
+
+/* ── Boot splash ──────────────────────────────────────────────────────────── */
+.gb-splash {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  background: #0B0F1A; color: var(--purple);
+}
+.gb-splash .gb-logo { font-family: 'Press Start 2P', monospace; font-size: 18px; color: var(--magenta); text-shadow: 0 0 12px rgba(255,92,168,0.5); }
+.gb-splash .gb-blink { font-size: 11px; letter-spacing: 0.2em; color: var(--green); animation: gb-blink 1s steps(1) infinite; }
+@keyframes gb-blink { 50% { opacity: 0; } }
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+.gb-toast {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 6;
+  background: var(--green); color: #06210F; font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  padding: 6px 14px; opacity: 0; box-shadow: 0 0 14px rgba(124,255,158,0.4);
+  white-space: nowrap;
+}
+.gb-toast.show { opacity: 1; }
+
+/* ── Wordmark ─────────────────────────────────────────────────────────────── */
+.gb-wordmark { display: flex; align-items: center; justify-content: center; gap: 11px; padding: 14px 4px 6px; flex-shrink: 0; }
+.gb-wordmark .gb-wt { font-family: 'Press Start 2P', monospace; font-size: 19px; color: var(--label-ink); letter-spacing: 0.01em; }
+.gb-wordmark .gb-n8 { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--magenta); letter-spacing: 0.06em; margin-top: 6px; }
+
+/* ── Controls deck ────────────────────────────────────────────────────────── */
+.gb-deck { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 6px 6px 2px; flex-shrink: 0; }
+.gb-deck .gb-mid { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.gb-startsel { display: flex; gap: 18px; }
+.gb-ab-cluster { display: flex; align-items: flex-end; gap: 16px; margin: 0 4px 14px 0; }
+.gb-ab-cluster .ab-key.lifted { transform: translateY(-12px); }
+.gb-speaker { position: absolute; right: 30px; bottom: 26px; display: flex; gap: 4px; transform: rotate(-22deg); pointer-events: none; }
+.gb-speaker i { width: 3px; height: 22px; background: var(--shell-deep); opacity: 0.6; border-radius: 2px !important; }
+.gb-speaker i:nth-child(2) { height: 27px; }
+.gb-speaker i:nth-child(3) { height: 30px; }
+.gb-speaker i:nth-child(4) { height: 27px; }
+.gb-speaker i:nth-child(5) { height: 22px; }
+
+/* ── Device-scoped control sizing ─────────────────────────────────────────── */
+.gb-device .dpad { width: 108px; height: 108px; grid-template-columns: repeat(3,36px); grid-template-rows: repeat(3,36px); }
+.gb-device .ab-key { width: 52px; height: 52px; }
+.gb-device .ab-label { color: var(--label-ink); }
+.gb-device .pill-key { color: var(--label-ink); }
+
+/* Smaller viewports: trim margins so the device scales up as much as possible */
+@media (max-width: 430px) {
+  .gb-viewport { padding: 0; }
+}
