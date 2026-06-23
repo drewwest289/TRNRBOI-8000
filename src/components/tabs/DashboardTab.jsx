@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MapPin, ChevronDown, ChevronUp, Activity, Footprints, Clock, Mountain } from 'lucide-react';
+import { MapPin, ChevronDown, ChevronUp, Activity, Footprints, Clock, Mountain, Gauge, Heart, Repeat } from 'lucide-react';
 import { RefreshCw, Users } from '../../icons/PixelIcons';
 import { TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
@@ -99,15 +99,23 @@ function computeAverages(activities) {
   const withHR      = runs.filter(a => a.hr);
   const withCadence = runs.filter(a => a.cadence);
 
+  const dates    = runs.map(a => a.date).sort();
+  const dateSpan = dates.length ? `${dates[0]} to ${dates[dates.length - 1]}` : null;
+
   return {
+    runCount:    runs.length,
+    dateSpan,
     avgPace:     paceStr(totalDist, totalDur),
     avgDistMi:   (totalDist / runs.length).toFixed(2),
+    totalDistMi: totalDist,
     avgHR:       withHR.length
       ? Math.round(withHR.reduce((s, a) => s + a.hr, 0) / withHR.length)
       : null,
+    hrCount:     withHR.length,
     avgCadence:  withCadence.length
       ? Math.round(withCadence.reduce((s, a) => s + a.cadence, 0) / withCadence.length)
       : null,
+    cadenceCount: withCadence.length,
   };
 }
 
@@ -117,27 +125,17 @@ function Skeleton({ className = '' }) {
   return <div className={`animate-pulse bg-slate-800 rounded-lg ${className}`} />;
 }
 
-function MetricCard({ label, value, sub }) {
+// Icon-led stat strip, laid out as one row with dividers instead of boxed
+// tiles. Each item is clickable — tapping it reveals a `detail` line below
+// the strip explaining what the number is pulled from, since a bare number
+// doesn't say whether it's lifetime Strava data or local logged runs.
+function StatItem({ icon: Icon, value, label, detail, active, onClick }) {
   return (
-    <div className="bg-slate-800 rounded-xl p-4">
-      <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
-      <div
-        className="text-2xl font-semibold"
-        style={{ fontFamily: '"Press Start 2P", monospace', color: 'var(--green)' }}
-      >
-        {value}
-      </div>
-      {sub && <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{sub}</div>}
-    </div>
-  );
-}
-
-// Icon-led stat strip — same data as MetricCard's grid but laid out as one
-// row with dividers instead of four boxed tiles, so the lifetime totals read
-// more like a readout than a grid of duplicate squares.
-function StatItem({ icon: Icon, value, label }) {
-  return (
-    <div className="flex-1 flex flex-col items-center gap-1.5 px-1 py-2">
+    <button
+      onClick={onClick}
+      className="flex-1 flex flex-col items-center gap-1.5 px-1 py-2"
+      style={{ background: 'none', border: 'none', cursor: detail ? 'pointer' : 'default' }}
+    >
       <Icon size={18} color={TOKENS.green} strokeWidth={2} />
       <div
         className="text-lg font-semibold leading-none"
@@ -145,15 +143,36 @@ function StatItem({ icon: Icon, value, label }) {
       >
         {value}
       </div>
-      <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</div>
-    </div>
+      <div
+        className="text-[10px] uppercase tracking-wider"
+        style={{ color: active ? 'var(--text-primary)' : 'var(--text-muted)' }}
+      >
+        {label}
+      </div>
+    </button>
   );
 }
 
 function StatStrip({ items }) {
+  const [openIdx, setOpenIdx] = useState(null);
+
   return (
-    <div className="flex divide-x divide-slate-800">
-      {items.map((item, i) => <StatItem key={i} {...item} />)}
+    <div>
+      <div className="flex divide-x divide-slate-800">
+        {items.map((item, i) => (
+          <StatItem
+            key={i}
+            {...item}
+            active={openIdx === i}
+            onClick={() => item.detail && setOpenIdx(openIdx === i ? null : i)}
+          />
+        ))}
+      </div>
+      {openIdx !== null && items[openIdx].detail && (
+        <div className="mt-3 pt-3 text-xs" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+          {items[openIdx].detail}
+        </div>
+      )}
     </div>
   );
 }
@@ -411,14 +430,57 @@ export default function DashboardTab() {
           <div className="section-label">Lifetime run totals</div>
           <StatStrip
             items={[
-              { icon: Activity,   value: (allTotals.count ?? 0).toLocaleString(), label: 'Runs' },
-              { icon: Footprints, value: allTotals.distance
+              {
+                icon: Activity, value: (allTotals.count ?? 0).toLocaleString(), label: 'Runs',
+                detail: "Strava's all-time run count for your account, as of last sync.",
+              },
+              {
+                icon: Footprints,
+                value: allTotals.distance
                   ? metersToMiles(allTotals.distance).toLocaleString(undefined, { maximumFractionDigits: 0 })
-                  : '—', label: 'Miles' },
-              { icon: Clock,      value: allTotals.moving_time ? formatHours(allTotals.moving_time) : '—', label: 'Hours' },
-              { icon: Mountain,   value: allTotals.elevation_gain
+                  : '—',
+                label: 'Miles',
+                detail: "Strava's all-time run distance for your account, as of last sync.",
+              },
+              {
+                icon: Clock, value: allTotals.moving_time ? formatHours(allTotals.moving_time) : '—', label: 'Hours',
+                detail: "Strava's all-time moving time for your account, as of last sync.",
+              },
+              {
+                icon: Mountain,
+                value: allTotals.elevation_gain
                   ? metersToFeet(allTotals.elevation_gain).toLocaleString(undefined, { maximumFractionDigits: 0 })
-                  : '—', label: 'Feet climbed' },
+                  : '—',
+                label: 'Feet climbed',
+                detail: "Strava's all-time elevation gain for your account, as of last sync.",
+              },
+            ]}
+          />
+        </div>
+      )}
+
+      {/* Average stats */}
+      {averages && (
+        <div className="card">
+          <div className="section-label">Average stats</div>
+          <StatStrip
+            items={[
+              {
+                icon: Gauge, value: averages.avgPace, label: '/ mile',
+                detail: `Averaged across ${averages.runCount} logged runs (${averages.totalDistMi.toFixed(0)} mi total) from ${averages.dateSpan}.`,
+              },
+              {
+                icon: Footprints, value: `${averages.avgDistMi}`, label: 'mi / run',
+                detail: `Total logged distance ÷ ${averages.runCount} runs, from ${averages.dateSpan}.`,
+              },
+              ...(averages.avgHR ? [{
+                icon: Heart, value: averages.avgHR, label: 'bpm',
+                detail: `Averaged across ${averages.hrCount} of ${averages.runCount} logged runs that recorded heart rate.`,
+              }] : []),
+              ...(averages.avgCadence ? [{
+                icon: Repeat, value: averages.avgCadence, label: 'spm',
+                detail: `Averaged across ${averages.cadenceCount} of ${averages.runCount} logged runs that recorded cadence.`,
+              }] : []),
             ]}
           />
         </div>
@@ -440,23 +502,6 @@ export default function DashboardTab() {
           </p>
         )}
       </div>
-
-      {/* Average stats */}
-      {averages && (
-        <div className="card">
-          <div className="section-label">Average stats</div>
-          <div className="grid grid-cols-2 gap-3">
-            <MetricCard label="Avg pace" value={averages.avgPace} sub="/ mile" />
-            <MetricCard label="Avg distance" value={`${averages.avgDistMi} mi`} />
-            {averages.avgHR && (
-              <MetricCard label="Avg heart rate" value={averages.avgHR} sub="bpm" />
-            )}
-            {averages.avgCadence && (
-              <MetricCard label="Avg cadence" value={averages.avgCadence} sub="spm" />
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
