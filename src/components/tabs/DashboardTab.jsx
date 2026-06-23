@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MapPin, ChevronDown, ChevronUp } from 'lucide-react';
-import { RefreshCw, Users, Runner, Shoe, Clock, Chart } from '../../icons/PixelIcons';
+import { MapPin, ChevronDown, ChevronUp, Activity, Footprints, Clock, Mountain } from 'lucide-react';
+import { RefreshCw, Users } from '../../icons/PixelIcons';
 import { TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
 import { useActivities } from '../../hooks/useActivities';
@@ -138,7 +138,7 @@ function MetricCard({ label, value, sub }) {
 function StatItem({ icon: Icon, value, label }) {
   return (
     <div className="flex-1 flex flex-col items-center gap-1.5 px-1 py-2">
-      <Icon size={18} color={TOKENS.green} glow />
+      <Icon size={18} color={TOKENS.green} strokeWidth={2} />
       <div
         className="text-lg font-semibold leading-none"
         style={{ fontFamily: '"Press Start 2P", monospace', color: 'var(--green)' }}
@@ -411,12 +411,12 @@ export default function DashboardTab() {
           <div className="section-label">Lifetime run totals</div>
           <StatStrip
             items={[
-              { icon: Runner, value: (allTotals.count ?? 0).toLocaleString(), label: 'Runs' },
-              { icon: Shoe,   value: allTotals.distance
+              { icon: Activity,   value: (allTotals.count ?? 0).toLocaleString(), label: 'Runs' },
+              { icon: Footprints, value: allTotals.distance
                   ? metersToMiles(allTotals.distance).toLocaleString(undefined, { maximumFractionDigits: 0 })
                   : '—', label: 'Miles' },
-              { icon: Clock,  value: allTotals.moving_time ? formatHours(allTotals.moving_time) : '—', label: 'Hours' },
-              { icon: Chart,  value: allTotals.elevation_gain
+              { icon: Clock,      value: allTotals.moving_time ? formatHours(allTotals.moving_time) : '—', label: 'Hours' },
+              { icon: Mountain,   value: allTotals.elevation_gain
                   ? metersToFeet(allTotals.elevation_gain).toLocaleString(undefined, { maximumFractionDigits: 0 })
                   : '—', label: 'Feet climbed' },
             ]}
