@@ -209,13 +209,24 @@ function PaceDashboard({ runs, zones, typeById }) {
                 />
               )}
               <Tooltip content={<TrendTooltip />} cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} />
+              {/* Static fill — Area's stroke renders immediately regardless of
+                  animation props, only its fill animates, so the visible
+                  outline is drawn separately below via a Line. */}
               <Area
+                yAxisId="pace"
+                type="monotone"
+                dataKey="pace"
+                stroke="none"
+                fill={`${TOKENS.green}18`}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Line
                 yAxisId="pace"
                 type="monotone"
                 dataKey="pace"
                 stroke={TOKENS.green}
                 strokeWidth={1.5}
-                fill={`${TOKENS.green}18`}
                 dot={{ fill: TOKENS.green, r: 2.5, strokeWidth: 0 }}
                 activeDot={{ r: 4, strokeWidth: 0 }}
                 connectNulls
