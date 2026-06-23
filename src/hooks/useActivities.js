@@ -61,8 +61,13 @@ export async function addManualActivity(entry) {
   await fetchActivities();
 }
 
+// Manual entries carry a `local-<id>` prefix in the merged feed (so they
+// can't collide with Strava's numeric ids in the same list) — strip it back
+// off before hitting the server, which only knows the bare override row id.
+const rawOverrideId = id => String(id).replace(/^local-/, '');
+
 export async function updateManualActivity(id, fields) {
-  await apiFetch(`/api/activities/manual/${id}`, {
+  await apiFetch(`/api/activities/manual/${rawOverrideId(id)}`, {
     method: 'PUT',
     body: JSON.stringify(fields),
   });
@@ -70,7 +75,7 @@ export async function updateManualActivity(id, fields) {
 }
 
 export async function deleteManualActivity(id) {
-  await apiFetch(`/api/activities/manual/${id}`, { method: 'DELETE' });
+  await apiFetch(`/api/activities/manual/${rawOverrideId(id)}`, { method: 'DELETE' });
   await fetchActivities();
 }
 
