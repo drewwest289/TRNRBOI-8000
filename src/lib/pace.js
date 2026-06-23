@@ -50,6 +50,34 @@ export function prCandidates(runs, targetM) {
     .sort((a, b) => b.average_speed - a.average_speed);
 }
 
+// Shared with the Dashboard's PR table — same distance buckets so a run
+// badged as a PR elsewhere in the app always means "fastest at this distance".
+export const PR_TARGETS = [
+  { name: '400m',          targetM: 400,   goalSecs: 60,   goalLabel: 'sub-1:00',    paceUnit: 'km' },
+  { name: '1K',            targetM: 1000,  goalSecs: 210,  goalLabel: 'sub-3:30',    paceUnit: 'km' },
+  { name: '1 Mile',        targetM: 1609,  goalSecs: 360,  goalLabel: 'sub-6:00',    paceUnit: 'mi' },
+  { name: '5K',            targetM: 5000,  goalSecs: 1500, goalLabel: 'sub-25:00',   paceUnit: 'mi' },
+  { name: '10K',           targetM: 10000, goalSecs: 3000, goalLabel: 'sub-50:00',   paceUnit: 'mi' },
+  { name: 'Half Marathon', targetM: 21097, goalSecs: 7200, goalLabel: 'sub-2:00:00', paceUnit: 'mi' },
+];
+
+/**
+ * Strava activity ids that currently hold the #1 spot for any PR_TARGETS
+ * distance bucket — for badging the run-log row, not just the Dashboard table.
+ */
+export function getCurrentPRIds(activities) {
+  const stravaRuns = activities
+    .filter(a => a.source === 'strava' && a.raw && a.type !== 'Rest')
+    .map(a => a.raw);
+
+  const ids = new Set();
+  for (const { targetM } of PR_TARGETS) {
+    const best = prCandidates(stravaRuns, targetM)[0];
+    if (best) ids.add(best.id);
+  }
+  return ids;
+}
+
 export function formatPaceTick(value) {
   const min = Math.floor(value);
   const sec = Math.round((value - min) * 60);

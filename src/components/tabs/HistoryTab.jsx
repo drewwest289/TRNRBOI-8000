@@ -4,13 +4,13 @@ import {
   ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { Plus, Trash2 } from '../../icons/PixelIcons';
+import { Plus, Trash2, Trophy } from '../../icons/PixelIcons';
 import {
   useActivities, addManualActivity, deleteManualActivity, updateManualActivity,
   setActivityOverride, TYPE_OPTIONS,
 } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
-import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
+import { paceStr, formatPaceTick, paceDecimal, getCurrentPRIds } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { TYPE_COLOR, CHART_COLORS, TOKENS } from '../../lib/colors';
 import ActivityDetailModal from '../ActivityDetailModal';
@@ -153,6 +153,7 @@ export default function HistoryTab() {
   // Rest days are kept in the log (so a mistaken tag is easy to undo) but
   // excluded from every stat, chart, and average below.
   const trainingRuns = activities.filter(r => r.type !== 'Rest');
+  const prIds         = getCurrentPRIds(activities);
 
   const weeklyData = weeklyMileageData(activities);
   const paceData   = paceTrendData(activities);
@@ -448,6 +449,11 @@ export default function HistoryTab() {
                     title="View details"
                   >
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{authUser?.name}</span>
+                    {r.stravaId != null && prIds.has(r.stravaId) && (
+                      <span title="Current personal record">
+                        <Trophy size={13} color={TOKENS.yellow} />
+                      </span>
+                    )}
                   </button>
                   <select
                     className="text-xs rounded px-1 py-0.5 border border-slate-700 bg-slate-800 cursor-pointer"

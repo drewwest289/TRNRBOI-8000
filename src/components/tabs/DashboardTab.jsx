@@ -4,7 +4,7 @@ import { RefreshCw, Users } from '../../icons/PixelIcons';
 import { TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
 import { useActivities } from '../../hooks/useActivities';
-import { paceStr, prCandidates } from '../../lib/pace';
+import { paceStr, prCandidates, PR_TARGETS } from '../../lib/pace';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,15 +33,6 @@ function formatPaceFromMps(mps) {
 }
 
 // ── Derived data ──────────────────────────────────────────────────────────────
-
-const PR_TARGETS = [
-  { name: '400m',          targetM: 400,   goalSecs: 60,   goalLabel: 'sub-1:00',    paceUnit: 'km' },
-  { name: '1K',            targetM: 1000,  goalSecs: 210,  goalLabel: 'sub-3:30',    paceUnit: 'km' },
-  { name: '1 Mile',        targetM: 1609,  goalSecs: 360,  goalLabel: 'sub-6:00',    paceUnit: 'mi' },
-  { name: '5K',            targetM: 5000,  goalSecs: 1500, goalLabel: 'sub-25:00',   paceUnit: 'mi' },
-  { name: '10K',           targetM: 10000, goalSecs: 3000, goalLabel: 'sub-50:00',   paceUnit: 'mi' },
-  { name: 'Half Marathon', targetM: 21097, goalSecs: 7200, goalLabel: 'sub-2:00:00', paceUnit: 'mi' },
-];
 
 function formatPacePerKm(mps) {
   if (!mps || mps <= 0) return '--';
