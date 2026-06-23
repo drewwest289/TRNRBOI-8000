@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw } from '../../icons/PixelIcons';
 import {
-  ComposedChart, Area, Line,
+  ComposedChart, Area, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import { apiFetch } from '../../lib/api';
@@ -34,6 +34,72 @@ function getZone(hr, zones) {
   return null;
 }
 
+/** Buckets runs into calendar weeks (Sun–Sat), oldest first. */
+function bucketByWeek(runs, weeksCount = 10) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const thisWeekStart = new Date(today);
+  thisWeekStart.setDate(today.getDate() - today.getDay());
+
+  const weeks = Array.from({ length: weeksCount }, (_, i) => {
+    const start = new Date(thisWeekStart);
+    start.setDate(thisWeekStart.getDate() - (weeksCount - 1 - i) * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return { start, end, runs: [] };
+  });
+
+  for (const a of runs) {
+    if (!a.start_date_local) continue;
+    const d = new Date(a.start_date_local.slice(0, 10));
+    for (const w of weeks) {
+      if (d >= w.start && d <= w.end) { w.runs.push(a); break; }
+    }
+  }
+  return weeks;
+}
+
+function weekLabel(start) {
+  return `${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+}
+
+// Rule-of-thumb adjustment: climbing costs roughly 12 sec/mile of pace for
+// every 100ft of gain encountered in that mile. Flattens hilly runs so pace
+// is comparable across routes of different terrain, not a true grade model.
+const SEC_PER_100FT_PER_MILE = 12;
+
+function elevationAdjustedPaceStr(runs) {
+  const withElev = runs.filter(a => a.average_speed > 0 && a.distance > 0);
+  if (!withElev.length) return null;
+
+  const totalMi   = withElev.reduce((s, a) => s + a.distance, 0) / 1609.34;
+  const totalSec  = withElev.reduce((s, a) => s + a.distance / a.average_speed, 0);
+  const totalElevFt = withElev.reduce((s, a) => s + (a.total_elevation_gain || 0), 0) * 3.28084;
+
+  const climbAdjustSec = (totalElevFt / 100) * SEC_PER_100FT_PER_MILE;
+  const flatSecPerMile = (totalSec - climbAdjustSec) / totalMi;
+  return secToMMSS(Math.max(flatSecPerMile, 0));
+}
+
+// Lightweight inline trend line — avoids spinning up a full recharts chart
+// for a tiny sparkline embedded inside a stat card.
+function Sparkline({ values, color, height = 22 }) {
+  if (values.length < 2) return null;
+  const w = 100;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const points = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = height - ((v - min) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+  return (
+    <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
 const ZONE_COLORS = [TOKENS.blue, TOKENS.green, TOKENS.yellow, '#F0883E', TOKENS.red];
 const ZONE_BG     = ['rgba(77,163,255,0.18)', 'rgba(124,255,158,0.18)', 'rgba(255,212,77,0.18)', 'rgba(240,136,62,0.18)', 'rgba(255,92,92,0.18)'];
 
@@ -49,12 +115,17 @@ const TYPE_COLOR_MAP = {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, unit, color }) {
+function StatCard({ label, value, unit, color, trend }) {
   return (
     <div className="rounded-lg p-3 border" style={{ background: 'var(--bg-nested)', borderColor: 'var(--border)' }}>
       <div className="text-xs mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontSize: 10 }}>{label}</div>
       <div className="text-2xl font-bold leading-none" style={{ color: color || TOKENS.green, fontFamily: '"Press Start 2P", monospace', fontSize: 18 }}>{value}</div>
       {unit && <div className="mt-1" style={{ color: 'var(--text-muted)', fontSize: 10 }}>{unit}</div>}
+      {trend && trend.length > 1 && (
+        <div className="mt-2">
+          <Sparkline values={trend} color={color || TOKENS.green} />
+        </div>
+      )}
     </div>
   );
 }
@@ -113,6 +184,30 @@ function PaceDashboard({ runs, zones, typeById }) {
     ? (effRuns.reduce((s, a) => s + (a.average_speed / a.average_heartrate), 0) / effRuns.length).toFixed(2)
     : '—';
 
+  // Strava's average_cadence is per single foot — runs report half the true
+  // steps/min, so double it to match what a runner would call cadence.
+  const runsWithCadence = recent.filter(a => a.average_cadence > 0);
+  const avgCadence = runsWithCadence.length
+    ? Math.round(runsWithCadence.reduce((s, a) => s + a.average_cadence * 2, 0) / runsWithCadence.length)
+    : null;
+
+  const elevAdjPaceStr = elevationAdjustedPaceStr(recent);
+
+  // Weekly mileage + weekly efficiency-index trends — same week buckets so
+  // both read off the same timeline.
+  const weeks = bucketByWeek(runs, 10);
+  const mileageTrend = weeks.map(w => ({
+    label: weekLabel(w.start),
+    miles: parseFloat((w.runs.reduce((s, a) => s + a.distance, 0) / 1609.34).toFixed(1)),
+  }));
+  const effTrendValues = weeks
+    .map(w => {
+      const wEffRuns = w.runs.filter(a => a.average_speed > 0 && a.average_heartrate > 0);
+      if (!wEffRuns.length) return null;
+      return wEffRuns.reduce((s, a) => s + (a.average_speed / a.average_heartrate), 0) / wEffRuns.length;
+    })
+    .filter(v => v != null);
+
   // Pace trend — last 20 runs
   const trendRuns = [...runs].filter(a => a.average_speed > 0).slice(0, 20).reverse();
   const trendData = trendRuns.map((a, i) => ({
@@ -154,11 +249,16 @@ function PaceDashboard({ runs, zones, typeById }) {
   return (
     <>
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         <StatCard label="Avg pace" value={avgPaceStr} unit="/ mile · last 30 days" color={TOKENS.green} />
         <StatCard label="Best pace" value={bestPaceStr} unit={bestPaceDate ? `/ mile · ${bestPaceDate}` : '/ mile'} color={TOKENS.blue} />
         <StatCard label="Avg HR" value={avgHR ?? '—'} unit="bpm · last 30 days" color={TOKENS.red} />
-        <StatCard label="Eff. index" value={effIdx} unit="speed / HR ratio" color={TOKENS.purple} />
+        <StatCard
+          label="Eff. index" value={effIdx} unit="speed / HR ratio" color={TOKENS.purple}
+          trend={effTrendValues}
+        />
+        <StatCard label="Cadence" value={avgCadence ?? '—'} unit="steps/min · last 30 days" color={TOKENS.yellow} />
+        <StatCard label="Elev-adj pace" value={elevAdjPaceStr ?? '—'} unit="/ mile · flat-equivalent" color="#F0883E" />
       </div>
 
       {/* Pace trend chart */}
@@ -251,6 +351,30 @@ function PaceDashboard({ runs, zones, typeById }) {
                 />
               )}
             </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Weekly mileage trend — separate from pace, since volume and pace tell different stories */}
+      {mileageTrend.some(w => w.miles > 0) && (
+        <div className="card mb-4">
+          <div className="section-label mb-0">Weekly mileage — last {mileageTrend.length} weeks</div>
+          <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Training volume, independent of pace</p>
+          <ResponsiveContainer width="100%" height={140}>
+            <BarChart data={mileageTrend} barSize={14} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="4 4" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                content={({ active, payload }) => active && payload?.[0] ? (
+                  <div className="rounded-lg px-3 py-2 text-xs shadow-xl border" style={{ background: '#1A2232', borderColor: 'var(--border)' }}>
+                    <span style={{ color: TOKENS.blue }}>{payload[0].value} mi</span>
+                  </div>
+                ) : null}
+                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+              />
+              <Bar dataKey="miles" fill={TOKENS.blue} radius={[2, 2, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
