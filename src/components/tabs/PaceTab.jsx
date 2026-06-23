@@ -219,6 +219,9 @@ function PaceDashboard({ runs, zones, typeById }) {
                 dot={{ fill: TOKENS.green, r: 2.5, strokeWidth: 0 }}
                 activeDot={{ r: 4, strokeWidth: 0 }}
                 connectNulls
+                animationDuration={2200}
+                animationEasing="ease-out"
+                animationBegin={0}
               />
               {hasHR && (
                 <Line
@@ -231,6 +234,9 @@ function PaceDashboard({ runs, zones, typeById }) {
                   dot={false}
                   activeDot={{ r: 3.5, strokeWidth: 0 }}
                   connectNulls
+                  animationDuration={2200}
+                  animationEasing="ease-out"
+                  animationBegin={0}
                 />
               )}
             </ComposedChart>
