@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
-  ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { Plus, Trash2, Trophy } from '../../icons/PixelIcons';
@@ -10,7 +9,7 @@ import {
   setActivityOverride, TYPE_OPTIONS,
 } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
-import { paceStr, formatPaceTick, paceDecimal, getCurrentPRIds } from '../../lib/pace';
+import { paceStr, getCurrentPRIds } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { TYPE_COLOR, CHART_COLORS, TOKENS } from '../../lib/colors';
 import ActivityDetailModal from '../ActivityDetailModal';
@@ -38,22 +37,6 @@ function weeklyMileageData(runs) {
     .map(([date, miles]) => ({ date: date.slice(5), miles: parseFloat(miles.toFixed(1)) }));
 }
 
-function paceTrendData(runs) {
-  return [...runs]
-    .filter(r => r.distMi > 0 && r.durMin > 0 && r.type !== 'Cross-train' && r.type !== 'Rest')
-    .slice(0, 20)
-    .reverse()
-    .map(r => ({
-      date:     r.date.slice(5),    // MM-DD for axis labels
-      fullDate: r.date,             // YYYY-MM-DD for tooltip
-      pace:     parseFloat(paceDecimal(r.distMi, r.durMin).toFixed(2)),
-      hr:       r.hr ?? undefined,
-      type:     r.type,
-      dist:     r.distMi,
-      dur:      r.durMin,
-    }));
-}
-
 function runTypeData(runs) {
   const counts = {};
   runs.forEach(r => {
@@ -75,38 +58,6 @@ const ChartTooltip = ({ active, payload, label, formatter }) => {
           {formatter ? formatter(p.value) : p.value}
         </p>
       ))}
-    </div>
-  );
-};
-
-const PaceHRTooltip = ({ active, payload }) => {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  if (!d) return null;
-  return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs shadow-xl" style={{ minWidth: 148 }}>
-      <p className="text-slate-400 font-medium mb-2">{d.fullDate}</p>
-      <div className="space-y-1">
-        <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Pace</span>
-          <span style={{ color: TOKENS.purple }}>{formatPaceTick(d.pace)}/mi</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Distance</span>
-          <span className="text-white">{d.dist?.toFixed(2)} mi</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Time</span>
-          <span className="text-white">{d.dur} min</span>
-        </div>
-        {d.hr != null && (
-          <div className="flex justify-between gap-4">
-            <span className="text-slate-500">Heart rate</span>
-            <span style={{ color: TOKENS.red }}>{d.hr} bpm</span>
-          </div>
-        )}
-      </div>
-      <p className="text-slate-600 text-[10px] mt-2 pt-1.5 border-t border-slate-700">{d.type}</p>
     </div>
   );
 };
@@ -156,9 +107,7 @@ export default function HistoryTab() {
   const prIds         = getCurrentPRIds(activities);
 
   const weeklyData = weeklyMileageData(activities);
-  const paceData   = paceTrendData(activities);
   const typeData   = runTypeData(activities);
-  const hasHR      = paceData.some(d => d.hr != null);
 
   const totalMiles = trainingRuns.reduce((s, r) => s + r.distMi, 0);
   const avgPace    = trainingRuns.length
@@ -223,105 +172,6 @@ export default function HistoryTab() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-
-          {/* Pace trend */}
-          {paceData.length > 1 && (
-            <div className="card">
-              {/* Header row: title + optional HR legend */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Pace trend · last 20 runs · lower is faster
-                </span>
-                {hasHR && (
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1.5" style={{ color: TOKENS.purple }}>
-                      <span style={{ display:'inline-block', width:14, height:2, background: TOKENS.purple }} />
-                      PACE
-                    </span>
-                    <span className="flex items-center gap-1.5" style={{ color: TOKENS.red }}>
-                      <span style={{ display:'inline-block', width:14, height:2, background: TOKENS.red }} />
-                      HR
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart
-                  data={paceData}
-                  margin={{ top: 8, right: hasHR ? 8 : 8, left: 0, bottom: 4 }}
-                >
-                  <CartesianGrid stroke="#1e293b" strokeDasharray="4 4" vertical={false} />
-
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: '#64748b', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    // Show ~5 labels regardless of how many data points there are
-                    interval={Math.max(0, Math.ceil(paceData.length / 5) - 1)}
-                  />
-
-                  {/* Left axis — pace (reversed: lower = faster = higher on screen) */}
-                  <YAxis
-                    yAxisId="pace"
-                    orientation="left"
-                    tick={{ fill: '#64748b', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={formatPaceTick}
-                    domain={['auto', 'auto']}
-                    reversed
-                    width={44}
-                  />
-
-                  {/* Right axis — heart rate (only rendered when data is present) */}
-                  {hasHR && (
-                    <YAxis
-                      yAxisId="hr"
-                      orientation="right"
-                      tick={{ fill: TOKENS.red + '99', fontSize: 10 }}
-                      axisLine={false}
-                      tickLine={false}
-                      domain={['auto', 'auto']}
-                      width={38}
-                    />
-                  )}
-
-                  <Tooltip
-                    content={<PaceHRTooltip />}
-                    cursor={{ stroke: '#334155', strokeWidth: 1 }}
-                  />
-
-                  {/* Pace area — blue per spec, flat fill */}
-                  <Area
-                    yAxisId="pace"
-                    type="monotone"
-                    dataKey="pace"
-                    stroke={TOKENS.blue}
-                    strokeWidth={2}
-                    fill="rgba(77,163,255,0.12)"
-                    dot={{ fill: TOKENS.blue, r: 3, strokeWidth: 0 }}
-                    activeDot={{ r: 5, strokeWidth: 0 }}
-                  />
-
-                  {/* Heart-rate line — red per spec */}
-                  {hasHR && (
-                    <Line
-                      yAxisId="hr"
-                      type="monotone"
-                      dataKey="hr"
-                      stroke={TOKENS.red}
-                      strokeWidth={1.5}
-                      dot={{ fill: TOKENS.red, r: 2.5, strokeWidth: 0 }}
-                      activeDot={{ r: 4.5, strokeWidth: 0 }}
-                      connectNulls
-                    />
-                  )}
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          )}
 
           {/* Run type breakdown */}
           {typeData.length > 0 && (

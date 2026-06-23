@@ -1,32 +1,15 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Footprints, BarChart2, CheckCircle2 } from 'lucide-react';
 import { Settings } from '../../icons/PixelIcons';
 import { useActivities } from '../../hooks/useActivities';
 import { usePlanOverrides } from '../../hooks/usePlanOverrides';
 import { getPlanWeek, getMiles, getActualMilesForWeek } from '../../lib/plan';
 import { TOKENS } from '../../lib/colors';
+import StatStrip from '../StatStrip';
 import WeekGrid from '../WeekGrid';
 import MileageChart from '../MileageChart';
 import PlanSettings from '../PlanSettings';
 import DayDrawer from '../DayDrawer';
-
-function MetricCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-slate-800 rounded-xl p-4">
-      <div className="text-xs" style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-      <div
-        className="text-2xl font-semibold"
-        style={{
-          fontFamily: '"Press Start 2P", monospace',
-          color: accent ? TOKENS.green : 'var(--green)',
-        }}
-      >
-        {value}
-      </div>
-      {sub && <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{sub}</div>}
-    </div>
-  );
-}
 
 /**
  * PlanTab receives the `plan` object from App (via useTrainingPlan) so the
@@ -120,29 +103,28 @@ export default function PlanTab({ plan }) {
         />
       )}
 
-      {/* Metric cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <MetricCard
-          label="Current week"
-          value={currentWeek}
-          sub={`of ${totalWeeks}`}
-        />
-        <MetricCard
-          label="This week"
-          value={currentActual.toFixed(1)}
-          sub={`of ${currentPlanned} mi planned`}
-          accent={currentActual >= currentPlanned && currentPlanned > 0 ? 'text-emerald-400' : 'text-white'}
-        />
-        <MetricCard
-          label="Total logged"
-          value={total.toFixed(1)}
-          sub="miles"
-        />
-        <MetricCard
-          label="Completion"
-          value={`${completion}%`}
-          sub="plan runs done"
-          accent={completion >= 80 ? 'text-emerald-400' : 'text-white'}
+      {/* Metric strip */}
+      <div className="card mb-6">
+        <div className="section-label">Plan progress</div>
+        <StatStrip
+          items={[
+            {
+              icon: Calendar, value: currentWeek, label: `of ${totalWeeks} weeks`,
+              detail: `Calculated from your training start date — week ${currentWeek} of a ${totalWeeks}-week plan.`,
+            },
+            {
+              icon: Footprints, value: currentActual.toFixed(1), label: `of ${currentPlanned} mi`,
+              detail: `Miles logged so far this week vs. the ${currentPlanned} mi this week's plan calls for.`,
+            },
+            {
+              icon: BarChart2, value: total.toFixed(1), label: 'Total mi',
+              detail: 'Total distance across every run logged in this app, for the whole plan.',
+            },
+            {
+              icon: CheckCircle2, value: `${completion}%`, label: 'Completion',
+              detail: `Total miles logged ÷ total miles planned through week ${currentWeek}.`,
+            },
+          ]}
         />
       </div>
 
