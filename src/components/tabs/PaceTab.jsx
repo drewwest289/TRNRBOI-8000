@@ -80,26 +80,6 @@ function elevationAdjustedPaceStr(runs) {
   return secToMMSS(Math.max(flatSecPerMile, 0));
 }
 
-// Lightweight inline trend line — avoids spinning up a full recharts chart
-// for a tiny sparkline embedded inside a stat card.
-function Sparkline({ values, color, height = 22 }) {
-  if (values.length < 2) return null;
-  const w = 100;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const points = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * w;
-    const y = height - ((v - min) / range) * height;
-    return `${x},${y}`;
-  }).join(' ');
-  return (
-    <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
-      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
 const ZONE_COLORS = [TOKENS.blue, TOKENS.green, TOKENS.yellow, '#F0883E', TOKENS.red];
 const ZONE_BG     = ['rgba(77,163,255,0.18)', 'rgba(124,255,158,0.18)', 'rgba(255,212,77,0.18)', 'rgba(240,136,62,0.18)', 'rgba(255,92,92,0.18)'];
 
@@ -115,17 +95,12 @@ const TYPE_COLOR_MAP = {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, unit, color, trend }) {
+function StatCard({ label, value, unit, color }) {
   return (
     <div className="rounded-lg p-3 border" style={{ background: 'var(--bg-nested)', borderColor: 'var(--border)' }}>
       <div className="text-xs mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontSize: 10 }}>{label}</div>
       <div className="text-2xl font-bold leading-none" style={{ color: color || TOKENS.green, fontFamily: '"Press Start 2P", monospace', fontSize: 18 }}>{value}</div>
       {unit && <div className="mt-1" style={{ color: 'var(--text-muted)', fontSize: 10 }}>{unit}</div>}
-      {trend && trend.length > 1 && (
-        <div className="mt-2">
-          <Sparkline values={trend} color={color || TOKENS.green} />
-        </div>
-      )}
     </div>
   );
 }
@@ -200,11 +175,12 @@ function PaceDashboard({ runs, zones, typeById }) {
     label: weekLabel(w.start),
     miles: parseFloat((w.runs.reduce((s, a) => s + a.distance, 0) / 1609.34).toFixed(1)),
   }));
-  const effTrendValues = weeks
+  const effTrend = weeks
     .map(w => {
       const wEffRuns = w.runs.filter(a => a.average_speed > 0 && a.average_heartrate > 0);
       if (!wEffRuns.length) return null;
-      return wEffRuns.reduce((s, a) => s + (a.average_speed / a.average_heartrate), 0) / wEffRuns.length;
+      const eff = wEffRuns.reduce((s, a) => s + (a.average_speed / a.average_heartrate), 0) / wEffRuns.length;
+      return { label: weekLabel(w.start), eff: parseFloat(eff.toFixed(3)) };
     })
     .filter(v => v != null);
 
@@ -253,10 +229,7 @@ function PaceDashboard({ runs, zones, typeById }) {
         <StatCard label="Avg pace" value={avgPaceStr} unit="/ mile · last 30 days" color={TOKENS.green} />
         <StatCard label="Best pace" value={bestPaceStr} unit={bestPaceDate ? `/ mile · ${bestPaceDate}` : '/ mile'} color={TOKENS.blue} />
         <StatCard label="Avg HR" value={avgHR ?? '—'} unit="bpm · last 30 days" color={TOKENS.red} />
-        <StatCard
-          label="Eff. index" value={effIdx} unit="speed / HR ratio" color={TOKENS.purple}
-          trend={effTrendValues}
-        />
+        <StatCard label="Eff. index" value={effIdx} unit="speed / HR ratio" color={TOKENS.purple} />
         <StatCard label="Cadence" value={avgCadence ?? '—'} unit="steps/min · last 30 days" color={TOKENS.yellow} />
         <StatCard label="Elev-adj pace" value={elevAdjPaceStr ?? '—'} unit="/ mile · flat-equivalent" color="#F0883E" />
       </div>
@@ -279,7 +252,7 @@ function PaceDashboard({ runs, zones, typeById }) {
               )}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={trendData} margin={{ top: 4, right: hasHR ? 8 : 4, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="4 4" vertical={false} />
               <XAxis
@@ -375,6 +348,56 @@ function PaceDashboard({ runs, zones, typeById }) {
               />
               <Bar dataKey="miles" fill={TOKENS.blue} radius={[2, 2, 0, 0]} />
             </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Efficiency index trend — same speed/HR ratio as the stat card, but
+          over time instead of a single snapshot, so a flattening pace at a
+          lower HR (i.e. getting fitter) is visible week to week. */}
+      {effTrend.length > 1 && (
+        <div className="card mb-4">
+          <div className="section-label mb-0">Efficiency trend — last {effTrend.length} weeks</div>
+          <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Speed / HR ratio · higher means more speed per heartbeat</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={effTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="4 4" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
+                axisLine={false} tickLine={false}
+                domain={['auto', 'auto']}
+                width={44}
+              />
+              <Tooltip
+                content={({ active, payload }) => active && payload?.[0] ? (
+                  <div className="rounded-lg px-3 py-2 text-xs shadow-xl border" style={{ background: '#1A2232', borderColor: 'var(--border)' }}>
+                    <span style={{ color: TOKENS.purple }}>{payload[0].value}</span>
+                  </div>
+                ) : null}
+                cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="eff"
+                stroke="none"
+                fill={`${TOKENS.purple}18`}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="eff"
+                stroke={TOKENS.purple}
+                strokeWidth={1.5}
+                dot={{ fill: TOKENS.purple, r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, strokeWidth: 0 }}
+                connectNulls
+                animationDuration={2200}
+                animationEasing="ease-out"
+                animationBegin={0}
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
