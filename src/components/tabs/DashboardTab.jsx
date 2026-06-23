@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { RefreshCw, Users } from '../../icons/PixelIcons';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { CHART_COLORS, TYPE_COLOR, TOKENS } from '../../lib/colors';
+import { TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
 import { useActivities } from '../../hooks/useActivities';
 import { paceStr, prCandidates } from '../../lib/pace';
@@ -97,17 +96,6 @@ function computePRs(activities) {
       goalLabel,
     };
   });
-}
-
-function computeBreakdown(activities) {
-  const counts = {};
-  activities.forEach(a => {
-    if (a.type === 'Rest') return;
-    counts[a.type] = (counts[a.type] || 0) + 1;
-  });
-  return Object.entries(counts)
-    .map(([type, count]) => ({ type, count }))
-    .sort((a, b) => b.count - a.count);
 }
 
 function computeAverages(activities) {
@@ -336,17 +324,6 @@ function LoadingSkeleton() {
 
 // ── PR tooltip ────────────────────────────────────────────────────────────────
 
-function BreakdownTooltip({ active, payload }) {
-  if (!active || !payload?.[0]) return null;
-  const { name, value } = payload[0];
-  const color = TYPE_COLOR[name] || CHART_COLORS[0];
-  return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs">
-      <p style={{ color }}>{name}: {value}</p>
-    </div>
-  );
-}
-
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function DashboardTab() {
@@ -403,10 +380,9 @@ export default function DashboardTab() {
   }
 
   const allTotals  = stats?.all_run_totals;
+  const ytdTotals  = stats?.ytd_run_totals;
   const prs        = computePRs(activities);
-  const breakdown  = computeBreakdown(activities);
   const averages   = computeAverages(activities);
-  const totalRuns  = breakdown.reduce((s, e) => s + e.count, 0);
 
   return (
     <div>
@@ -441,6 +417,25 @@ export default function DashboardTab() {
               sub="feet"
             />
           </div>
+          {ytdTotals && (
+            <>
+              <div className="text-xs mt-4 mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>This year</div>
+              <div className="grid grid-cols-3 gap-3">
+                <MetricCard label="Runs" value={(ytdTotals.count ?? 0).toLocaleString()} />
+                <MetricCard
+                  label="Miles"
+                  value={ytdTotals.distance
+                    ? metersToMiles(ytdTotals.distance).toLocaleString(undefined, { maximumFractionDigits: 0 })
+                    : '—'}
+                />
+                <MetricCard
+                  label="Time"
+                  value={ytdTotals.moving_time ? formatHours(ytdTotals.moving_time) : '—'}
+                  sub="hours"
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -460,52 +455,6 @@ export default function DashboardTab() {
           </p>
         )}
       </div>
-
-      {/* Activity breakdown */}
-      {breakdown.length > 0 && (
-        <div className="card">
-          <div className="section-label">Activity breakdown</div>
-          <div className="flex items-center gap-6">
-            <ResponsiveContainer width={120} height={120}>
-              <PieChart>
-                <Pie
-                  data={breakdown}
-                  dataKey="count"
-                  nameKey="type"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={34}
-                  outerRadius={54}
-                  paddingAngle={3}
-                >
-                  {breakdown.map((entry, i) => (
-                    <Cell
-                      key={i}
-                      fill={TYPE_COLOR[entry.type] || CHART_COLORS[i % CHART_COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip content={<BreakdownTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-2">
-              {breakdown.map((entry, i) => {
-                const color = TYPE_COLOR[entry.type] || CHART_COLORS[i % CHART_COLORS.length];
-                const pct   = Math.round((entry.count / totalRuns) * 100);
-                return (
-                  <div key={entry.type} className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 flex-shrink-0" style={{ backgroundColor: color }} />
-                    <span className="text-xs w-20" style={{ color: 'var(--text-primary)' }}>{entry.type}</span>
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {entry.count} ({pct}%)
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Average stats */}
       {averages && (

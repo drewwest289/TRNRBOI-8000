@@ -13,7 +13,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { paceStr, formatPaceTick, paceDecimal } from '../../lib/pace';
 import { localDateStr } from '../../lib/plan';
 import { TYPE_COLOR, CHART_COLORS, TOKENS } from '../../lib/colors';
-import { StravaStatsCard } from '../StravaCards';
 import ActivityDetailModal from '../ActivityDetailModal';
 
 const RUN_TYPES = ['Easy', 'Tempo', 'Long run', 'Intervals', 'Cross-train'];
@@ -175,8 +174,6 @@ export default function HistoryTab() {
 
   return (
     <div>
-      <StravaStatsCard />
-
       {activeRun && (
         <ActivityDetailModal
           activity={{
@@ -193,7 +190,7 @@ export default function HistoryTab() {
 
       {/* Summary stats */}
       <p className="text-xs mt-1 mb-2" style={{ color: 'var(--text-muted)' }}>
-        Totals from the runs &amp; cross-training logged in this app below — a different (usually smaller) set than Strava's lifetime numbers above, since those cover your whole Strava history.
+        Totals from the runs &amp; cross-training logged in this app. Lifetime Strava totals and PRs live on the Dashboard tab.
       </p>
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-slate-800 rounded-xl p-4 text-center">

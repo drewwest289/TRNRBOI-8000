@@ -7,7 +7,7 @@ import {
 import { apiFetch } from '../../lib/api';
 import { fetchStravaZones } from '../../lib/strava';
 import { TOKENS } from '../../lib/colors';
-import { secToMMSS, formatPaceTick, prCandidates } from '../../lib/pace';
+import { secToMMSS, formatPaceTick } from '../../lib/pace';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,13 +36,6 @@ function getZone(hr, zones) {
 
 const ZONE_COLORS = [TOKENS.blue, TOKENS.green, TOKENS.yellow, '#F0883E', TOKENS.red];
 const ZONE_BG     = ['rgba(77,163,255,0.18)', 'rgba(124,255,158,0.18)', 'rgba(255,212,77,0.18)', 'rgba(240,136,62,0.18)', 'rgba(255,92,92,0.18)'];
-
-const PR_TARGETS = [
-  { label: '1 mile',        targetM: 1609.34 },
-  { label: '5K',            targetM: 5000    },
-  { label: '10K',           targetM: 10000   },
-  { label: 'Half marathon', targetM: 21097   },
-];
 
 const TYPE_ROWS = ['Easy', 'Long run', 'Tempo', 'Race'];
 
@@ -309,67 +302,6 @@ function PaceDashboard({ runs, zones, typeById }) {
   );
 }
 
-// ── Section 2: Personal records ───────────────────────────────────────────────
-
-function PersonalRecords({ runs }) {
-  // PR table
-  const prRows = PR_TARGETS.map(({ label, targetM }) => {
-    const candidates = prCandidates(runs, targetM);
-    if (!candidates.length) return { label, best: null };
-    const best    = candidates[0];
-    // Estimate the time at the target distance from the best run's pace —
-    // same approach as the Dashboard so the two tabs agree on PRs.
-    const timeSec = Math.round(targetM / best.average_speed);
-    const h = Math.floor(timeSec / 3600);
-    const timeStr = h > 0
-      ? `${h}:${String(Math.floor((timeSec % 3600) / 60)).padStart(2, '0')}:${String(timeSec % 60).padStart(2, '0')}`
-      : secToMMSS(timeSec);
-    return {
-      label,
-      best,
-      timeStr,
-      date: best.start_date_local?.substring(0, 10),
-      isPR: true,
-    };
-  });
-
-  return (
-    <>
-      {/* PR table */}
-      <div className="card mb-4">
-        <div className="section-label">Personal records</div>
-        <div className="space-y-1.5">
-          {prRows.map(({ label, best, timeStr, date }) => (
-            <div
-              key={label}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg"
-              style={{ background: 'var(--bg-nested)' }}
-            >
-              <span className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{label}</span>
-              {best ? (
-                <>
-                  <span className="text-base font-bold flex-1" style={{ color: TOKENS.green, fontFamily: '"Share Tech Mono", monospace' }}>
-                    {timeStr}
-                  </span>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{date}</span>
-                  <span
-                    className="text-xs px-1.5 py-0.5 rounded"
-                    style={{ color: TOKENS.green, background: `${TOKENS.green}18`, border: `1px solid ${TOKENS.green}44`, fontSize: 10 }}
-                  >
-                    PR
-                  </span>
-                </>
-              ) : (
-                <span className="text-xs flex-1" style={{ color: 'var(--text-muted)' }}>no effort logged</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PaceTab() {
@@ -452,7 +384,9 @@ export default function PaceTab() {
   return (
     <div>
       <PaceDashboard runs={runs} zones={zones} typeById={typeById} />
-      <PersonalRecords runs={runs} />
+      <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+        Personal records live on the Dashboard tab.
+      </p>
     </div>
   );
 }
