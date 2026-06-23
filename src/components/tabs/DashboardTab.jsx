@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapPin, ChevronDown, ChevronUp } from 'lucide-react';
-import { RefreshCw, Users } from '../../icons/PixelIcons';
+import { RefreshCw, Users, Runner, Shoe, Clock, Chart } from '../../icons/PixelIcons';
 import { TOKENS } from '../../lib/colors';
 import { fetchStravaAthlete } from '../../lib/strava';
 import { useActivities } from '../../hooks/useActivities';
@@ -89,100 +89,6 @@ function computePRs(activities) {
   });
 }
 
-// ── Weekly trend ──────────────────────────────────────────────────────────────
-
-const WEEKS_OF_HISTORY = 8;
-
-function parseLocalDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-// Buckets runs into calendar weeks (Sun–Sat) for the last WEEKS_OF_HISTORY
-// weeks, oldest first, so a sparkline can be drawn left-to-right.
-function computeWeeklyTrend(activities) {
-  const runs = activities.filter(a => a.type !== 'Rest' && a.distMi > 0 && a.date);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const thisWeekStart = new Date(today);
-  thisWeekStart.setDate(today.getDate() - today.getDay());
-
-  const weeks = Array.from({ length: WEEKS_OF_HISTORY }, (_, i) => {
-    const start = new Date(thisWeekStart);
-    start.setDate(thisWeekStart.getDate() - (WEEKS_OF_HISTORY - 1 - i) * 7);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    return { start, end, miles: 0 };
-  });
-
-  for (const run of runs) {
-    const d = parseLocalDate(run.date);
-    for (const week of weeks) {
-      if (d >= week.start && d <= week.end) {
-        week.miles += run.distMi;
-        break;
-      }
-    }
-  }
-
-  const current = weeks[weeks.length - 1].miles;
-  const previous = weeks[weeks.length - 2]?.miles ?? 0;
-  const pctChange = previous > 0 ? Math.round(((current - previous) / previous) * 100) : null;
-
-  return { weeks, current, previous, pctChange };
-}
-
-function WeeklyTrendCard({ trend }) {
-  const maxMiles = Math.max(...trend.weeks.map(w => w.miles), 1);
-
-  return (
-    <div className="card">
-      <div className="section-label">Weekly mileage</div>
-      <div className="flex items-end justify-between gap-1.5" style={{ height: 64 }}>
-        {trend.weeks.map((w, i) => {
-          const isCurrent = i === trend.weeks.length - 1;
-          const heightPct = Math.max(4, Math.round((w.miles / maxMiles) * 100));
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full" title={`${w.miles.toFixed(1)} mi`}>
-              <div
-                className="w-full rounded-t"
-                style={{
-                  height: `${heightPct}%`,
-                  backgroundColor: isCurrent ? TOKENS.green : 'var(--border)',
-                  transition: 'height 0.4s ease',
-                }}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex items-baseline justify-between mt-3">
-        <div>
-          <span
-            className="text-xl font-semibold"
-            style={{ fontFamily: '"Press Start 2P", monospace', color: 'var(--green)' }}
-          >
-            {trend.current.toFixed(1)}
-          </span>
-          <span className="text-xs ml-1.5" style={{ color: 'var(--text-muted)' }}>mi this week</span>
-        </div>
-        {trend.pctChange !== null && (
-          <span
-            className="text-xs px-1.5 py-0.5 rounded"
-            style={{
-              backgroundColor: trend.pctChange >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-              color: trend.pctChange >= 0 ? TOKENS.green : '#ef4444',
-            }}
-          >
-            {trend.pctChange >= 0 ? '↑' : '↓'} {Math.abs(trend.pctChange)}% vs last week
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function computeAverages(activities) {
   const runs = activities.filter(a => a.type !== 'Rest' && a.distMi > 0 && a.durMin > 0);
   if (!runs.length) return null;
@@ -222,6 +128,32 @@ function MetricCard({ label, value, sub }) {
         {value}
       </div>
       {sub && <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{sub}</div>}
+    </div>
+  );
+}
+
+// Icon-led stat strip — same data as MetricCard's grid but laid out as one
+// row with dividers instead of four boxed tiles, so the lifetime totals read
+// more like a readout than a grid of duplicate squares.
+function StatItem({ icon: Icon, value, label }) {
+  return (
+    <div className="flex-1 flex flex-col items-center gap-1.5 px-1 py-2">
+      <Icon size={18} color={TOKENS.green} glow />
+      <div
+        className="text-lg font-semibold leading-none"
+        style={{ fontFamily: '"Press Start 2P", monospace', color: 'var(--green)' }}
+      >
+        {value}
+      </div>
+      <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</div>
+    </div>
+  );
+}
+
+function StatStrip({ items }) {
+  return (
+    <div className="flex divide-x divide-slate-800">
+      {items.map((item, i) => <StatItem key={i} {...item} />)}
     </div>
   );
 }
@@ -387,10 +319,6 @@ function LoadingSkeleton() {
       </div>
       <div className="card">
         <Skeleton className="h-3 w-32 mb-4" />
-        <Skeleton className="h-16 w-full" />
-      </div>
-      <div className="card">
-        <Skeleton className="h-3 w-32 mb-4" />
         {[...Array(6)].map((_, i) => (
           <div key={i} className="flex justify-between py-3 border-b border-slate-800 last:border-0">
             <Skeleton className="h-4 w-28" />
@@ -469,10 +397,8 @@ export default function DashboardTab() {
   }
 
   const allTotals  = stats?.all_run_totals;
-  const ytdTotals  = stats?.ytd_run_totals;
   const prs        = computePRs(activities);
   const averages   = computeAverages(activities);
-  const trend      = activities.length > 0 ? computeWeeklyTrend(activities) : null;
 
   return (
     <div>
@@ -483,54 +409,20 @@ export default function DashboardTab() {
       {allTotals && (
         <div className="card">
           <div className="section-label">Lifetime run totals</div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MetricCard
-              label="Total runs"
-              value={(allTotals.count ?? 0).toLocaleString()}
-            />
-            <MetricCard
-              label="Total miles"
-              value={allTotals.distance
-                ? metersToMiles(allTotals.distance).toLocaleString(undefined, { maximumFractionDigits: 0 })
-                : '—'}
-            />
-            <MetricCard
-              label="Total time"
-              value={allTotals.moving_time ? formatHours(allTotals.moving_time) : '—'}
-              sub="hours"
-            />
-            <MetricCard
-              label="Elevation gain"
-              value={allTotals.elevation_gain
-                ? metersToFeet(allTotals.elevation_gain).toLocaleString(undefined, { maximumFractionDigits: 0 })
-                : '—'}
-              sub="feet"
-            />
-          </div>
-          {ytdTotals && (
-            <>
-              <div className="text-xs mt-4 mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>This year</div>
-              <div className="grid grid-cols-3 gap-3">
-                <MetricCard label="Runs" value={(ytdTotals.count ?? 0).toLocaleString()} />
-                <MetricCard
-                  label="Miles"
-                  value={ytdTotals.distance
-                    ? metersToMiles(ytdTotals.distance).toLocaleString(undefined, { maximumFractionDigits: 0 })
-                    : '—'}
-                />
-                <MetricCard
-                  label="Time"
-                  value={ytdTotals.moving_time ? formatHours(ytdTotals.moving_time) : '—'}
-                  sub="hours"
-                />
-              </div>
-            </>
-          )}
+          <StatStrip
+            items={[
+              { icon: Runner, value: (allTotals.count ?? 0).toLocaleString(), label: 'Runs' },
+              { icon: Shoe,   value: allTotals.distance
+                  ? metersToMiles(allTotals.distance).toLocaleString(undefined, { maximumFractionDigits: 0 })
+                  : '—', label: 'Miles' },
+              { icon: Clock,  value: allTotals.moving_time ? formatHours(allTotals.moving_time) : '—', label: 'Hours' },
+              { icon: Chart,  value: allTotals.elevation_gain
+                  ? metersToFeet(allTotals.elevation_gain).toLocaleString(undefined, { maximumFractionDigits: 0 })
+                  : '—', label: 'Feet climbed' },
+            ]}
+          />
         </div>
       )}
-
-      {/* Weekly mileage trend */}
-      {trend && <WeeklyTrendCard trend={trend} />}
 
       {/* Personal records */}
       <div className="card">
