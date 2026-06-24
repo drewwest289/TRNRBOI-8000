@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { Plus, Trash2, Trophy } from '../../icons/PixelIcons';
+import { X } from 'lucide-react';
 import {
   useActivities, addManualActivity, deleteManualActivity, updateManualActivity,
   setActivityOverride, TYPE_OPTIONS,
@@ -34,7 +35,18 @@ function weeklyMileageData(runs) {
   return Object.entries(byWeek)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-12)
-    .map(([date, miles]) => ({ date: date.slice(5), miles: parseFloat(miles.toFixed(1)) }));
+    .map(([weekStart, miles]) => ({ weekStart, date: weekStart.slice(5), miles: parseFloat(miles.toFixed(1)) }));
+}
+
+/** Runs falling within the 7-day window starting at weekStart (inclusive, local dates). */
+function runsForWeek(runs, weekStart) {
+  const start = new Date(weekStart + 'T00:00:00');
+  const end   = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return runs.filter(r => {
+    const d = new Date(r.date + 'T00:00:00');
+    return d >= start && d < end;
+  });
 }
 
 function runTypeData(runs) {
@@ -68,6 +80,7 @@ export default function HistoryTab() {
   const activities         = useActivities();
   const { user: authUser } = useAuth();
   const [activeRun,  setActiveRun]  = useState(null);
+  const [selectedWeekStart, setSelectedWeekStart] = useState(null);
 
   const [form, setForm] = useState({
     date: localToday(), dist: '', dur: '', type: 'Easy', notes: '',
@@ -108,6 +121,7 @@ export default function HistoryTab() {
 
   const weeklyData = weeklyMileageData(activities);
   const typeData   = runTypeData(activities);
+  const selectedWeekRuns = selectedWeekStart ? runsForWeek(activities, selectedWeekStart) : [];
 
   const totalMiles = trainingRuns.reduce((s, r) => s + r.distMi, 0);
   const avgPace    = trainingRuns.length
@@ -136,6 +150,61 @@ export default function HistoryTab() {
           }}
           onClose={() => setActiveRun(null)}
         />
+      )}
+
+      {selectedWeekStart && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          onClick={() => setSelectedWeekStart(null)}
+        >
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl max-h-[80vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-800">
+              <h2 className="text-sm font-semibold text-white">
+                Week of {selectedWeekStart}
+              </h2>
+              <button
+                className="text-slate-500 hover:text-white transition-colors ml-4 flex-shrink-0"
+                onClick={() => setSelectedWeekStart(null)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              {selectedWeekRuns.length === 0 ? (
+                <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  No runs logged this week.
+                </p>
+              ) : (
+                selectedWeekRuns.map(r => {
+                  const pace = paceStr(r.distMi, r.durMin);
+                  return (
+                    <button
+                      key={r.id}
+                      className="w-full flex items-center justify-between gap-3 py-2 text-left border-b border-slate-800/50 last:border-0"
+                      onClick={() => { setSelectedWeekStart(null); setActiveRun(r); }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{r.date}</span>
+                        <span className="text-xs" style={{ color: TYPE_COLOR[r.type] || 'var(--text-muted)' }}>{r.type}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{pace}/mi</span>
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                          {r.distMi.toFixed(1)} mi
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Summary stats */}
@@ -168,7 +237,13 @@ export default function HistoryTab() {
                 <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip formatter={v => `${v} mi`} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="miles" fill={TOKENS.green} radius={[0, 0, 0, 0]} />
+                <Bar
+                  dataKey="miles"
+                  fill={TOKENS.green}
+                  radius={[0, 0, 0, 0]}
+                  cursor="pointer"
+                  onClick={(data) => setSelectedWeekStart(data.weekStart)}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
