@@ -1,6 +1,6 @@
 import { DAY_NAMES, getDayType, getDayMiles, getDateForCell, getLogsForDate, getPlanWeek } from '../lib/plan';
 import { TYPE_COLOR, TYPE_BG, TOKENS } from '../lib/colors';
-import { Footprints, Route, Zap, Bike, BedDouble, X } from 'lucide-react';
+import { Footprints, Route, Zap, Dumbbell, BedDouble, X } from 'lucide-react';
 
 /** Icon component + fallback text label for each plan day type */
 const TYPE_GLYPH = {
@@ -8,7 +8,7 @@ const TYPE_GLYPH = {
   long:     { Icon: Route,      label: 'LONG'  },
   tempo:    { Icon: Zap,        label: 'TEMPO' },
   interval: { Icon: Zap,        label: 'INTV'  },
-  cross:    { Icon: Bike,       label: 'CROSS' },
+  cross:    { Icon: Dumbbell,   label: 'CROSS' },
   rest:     { Icon: BedDouble,  label: 'REST'  },
   race:     { Icon: null,       label: 'RACE!' },
 };
