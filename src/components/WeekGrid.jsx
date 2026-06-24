@@ -33,6 +33,7 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, t
         const dateStr = getDateForCell(week, i);
         const dayStr  = planOverrides[dateStr] ?? baseDayStr;
         const type    = getDayType(dayStr);
+        const DayIcon = TYPE_GLYPH[type]?.Icon;
         const planned = getDayMiles(dayStr);
         const logs    = getLogsForDate(dateStr, runs);
         const isRest  = type === 'rest';
@@ -86,8 +87,8 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, t
             </div>
             {/* Plan type glyph */}
             <div className="flex justify-center mb-1">
-              {TYPE_GLYPH[type]?.Icon ? (
-                <TYPE_GLYPH[type].Icon size={13} color={labelColor} strokeWidth={2} />
+              {DayIcon ? (
+                <DayIcon size={13} color={labelColor} strokeWidth={2} />
               ) : (
                 <span className="text-xs font-bold" style={{ color: labelColor }}>
                   {TYPE_GLYPH[type]?.label || type.toUpperCase()}
