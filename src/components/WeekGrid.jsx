@@ -1,16 +1,16 @@
 import { DAY_NAMES, getDayType, getDayMiles, getDateForCell, getLogsForDate, getPlanWeek } from '../lib/plan';
 import { TYPE_COLOR, TYPE_BG, TOKENS } from '../lib/colors';
-import { PixelIcon } from '../icons/PixelIcons';
+import { Footprints, Route, Zap, Bike, BedDouble, X } from 'lucide-react';
 
-/** Pixel icon name + fallback text label for each plan day type */
+/** Icon component + fallback text label for each plan day type */
 const TYPE_GLYPH = {
-  easy:     { icon: 'runner', label: 'EASY'  },
-  long:     { icon: 'road',   label: 'LONG'  },
-  tempo:    { icon: 'bolt',   label: 'TEMPO' },
-  interval: { icon: 'bolt',   label: 'INTV'  },
-  cross:    { icon: 'bike',   label: 'CROSS' },
-  rest:     { icon: 'bed',    label: 'REST'  },
-  race:     { icon: null,     label: 'RACE!' },
+  easy:     { Icon: Footprints, label: 'EASY'  },
+  long:     { Icon: Route,      label: 'LONG'  },
+  tempo:    { Icon: Zap,        label: 'TEMPO' },
+  interval: { Icon: Zap,        label: 'INTV'  },
+  cross:    { Icon: Bike,       label: 'CROSS' },
+  rest:     { Icon: BedDouble,  label: 'REST'  },
+  race:     { Icon: null,       label: 'RACE!' },
 };
 
 function shortDate(dateStr) {
@@ -86,12 +86,8 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, t
             </div>
             {/* Plan type glyph */}
             <div className="flex justify-center mb-1">
-              {TYPE_GLYPH[type]?.icon ? (
-                <PixelIcon
-                  name={TYPE_GLYPH[type].icon}
-                  size={10}
-                  color={labelColor}
-                />
+              {TYPE_GLYPH[type]?.Icon ? (
+                <TYPE_GLYPH[type].Icon size={13} color={labelColor} strokeWidth={2} />
               ) : (
                 <span className="text-xs font-bold" style={{ color: labelColor }}>
                   {TYPE_GLYPH[type]?.label || type.toUpperCase()}
@@ -115,7 +111,7 @@ export default function WeekGrid({ week, runs, onDayClick, planOverrides = {}, t
             )}
             {hasRestLog && (
               <div className="flex flex-col items-center mt-1 gap-0.5">
-                <PixelIcon name="close" size={10} color={TOKENS.textMuted} />
+                <X size={13} color={TOKENS.textMuted} strokeWidth={2} />
                 <span className="text-xs font-bold" style={{ color: TOKENS.textMuted }}>skipped</span>
               </div>
             )}
