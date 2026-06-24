@@ -1,4 +1,4 @@
-import { Calendar, Clock, Users, BarChart2, LayoutDashboard } from '../icons/PixelIcons';
+import { Calendar, Clock, Users, BarChart2, LayoutDashboard } from 'lucide-react';
 
 export const TABS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
