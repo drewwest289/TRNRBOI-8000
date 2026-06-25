@@ -514,7 +514,9 @@ export default function ActivityDetailModal({ activity, onClose }) {
         <div className="px-5 py-5 space-y-6">
           {!hasStrava && (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>
-              No Strava link — splits and charts unavailable for manually logged runs.
+              {activity.hiddenStrava
+                ? 'These splits are none of your business!'
+                : 'No Strava link — splits and charts unavailable for manually logged runs.'}
               {activity.notes && (
                 <span className="block mt-2" style={{ color: 'var(--text-primary)' }}>
                   📝 {activity.notes}

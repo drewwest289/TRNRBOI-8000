@@ -225,7 +225,8 @@ export default function TeamTab() {
             durMin:   activeRecent.durMin,
             // Strava detail/streams are fetched with the viewer's own token, which
             // can't read another athlete's activity — only request them for your own runs.
-            stravaId: activeRecent.userId === user?.id ? activeRecent.stravaId : null,
+            stravaId:     activeRecent.userId === user?.id ? activeRecent.stravaId : null,
+            hiddenStrava: activeRecent.userId !== user?.id && activeRecent.stravaId != null,
           }}
           onClose={() => setActiveRecent(null)}
         />
