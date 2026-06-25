@@ -490,8 +490,13 @@ app.get('/api/activities', requireAuth, async (req, res) => {
     const merged = [...stravaActivities, ...localActivities]
       .sort((x, y) => (y.date || '').localeCompare(x.date || ''));
 
-    const counts = await commentCountsByRunId(merged.map(a => String(a.id)));
-    for (const a of merged) a.commentCount = counts.get(String(a.id)) ?? 0;
+    const commentSummary = await commentSummaryByRunId(merged.map(a => String(a.id)));
+    for (const a of merged) {
+      const s = commentSummary.get(String(a.id));
+      a.commentCount      = s?.count ?? 0;
+      a.lastCommentBody   = s?.lastBody ?? null;
+      a.lastCommentAuthor = s?.lastAuthorName ?? null;
+    }
 
     res.json(merged);
   } catch (err) {
@@ -502,18 +507,30 @@ app.get('/api/activities', requireAuth, async (req, res) => {
 
 // ── Phase 11: comments on runs ────────────────────────────────────────────────
 
-// Map of run_id -> comment count, for showing an indicator on run summaries.
-async function commentCountsByRunId(runIds) {
-  const counts = new Map();
-  if (!runIds.length) return counts;
+const COMMENT_PREVIEW_LEN = 60;
+
+// Map of run_id -> { count, lastBody, lastAuthorName }, for showing a preview
+// of the most recent comment on run summaries (count + a snippet of the latest).
+async function commentSummaryByRunId(runIds) {
+  const summary = new Map();
+  if (!runIds.length) return summary;
   const { data } = await supabase
     .from('run_comments')
-    .select('run_id')
-    .in('run_id', runIds);
+    .select('run_id, body, created_at, users(name)')
+    .in('run_id', runIds)
+    .order('created_at', { ascending: false });
   for (const row of data ?? []) {
-    counts.set(row.run_id, (counts.get(row.run_id) ?? 0) + 1);
+    const existing = summary.get(row.run_id);
+    if (existing) {
+      existing.count++;
+    } else {
+      const truncated = row.body.length > COMMENT_PREVIEW_LEN
+        ? row.body.slice(0, COMMENT_PREVIEW_LEN).trimEnd() + '…'
+        : row.body;
+      summary.set(row.run_id, { count: 1, lastBody: truncated, lastAuthorName: row.users?.name ?? 'Unknown' });
+    }
   }
-  return counts;
+  return summary;
 }
 
 app.get('/api/activities/:runId/comments', requireAuth, async (req, res) => {
@@ -893,8 +910,13 @@ app.get('/api/team/recent-runs', requireAuth, async (req, res) => {
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 30);
 
-    const counts = await commentCountsByRunId(recent.map(r => String(r.id)));
-    for (const r of recent) r.commentCount = counts.get(String(r.id)) ?? 0;
+    const commentSummary = await commentSummaryByRunId(recent.map(r => String(r.id)));
+    for (const r of recent) {
+      const s = commentSummary.get(String(r.id));
+      r.commentCount      = s?.count ?? 0;
+      r.lastCommentBody   = s?.lastBody ?? null;
+      r.lastCommentAuthor = s?.lastAuthorName ?? null;
+    }
 
     res.json(recent);
   } catch (err) {

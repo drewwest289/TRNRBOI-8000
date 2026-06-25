@@ -197,19 +197,21 @@ export default function TeamTab() {
                 onClick={() => setActiveRecent(r)}
               >
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-white truncate flex items-center gap-1.5">
-                    {r.userName}
-                    {r.commentCount > 0 && (
-                      <span
-                        className="flex items-center gap-0.5 text-xs font-normal text-slate-500"
-                        title={`${r.commentCount} comment${r.commentCount === 1 ? '' : 's'}`}
-                      >
-                        <MessageCircle size={11} />
-                        {r.commentCount}
-                      </span>
-                    )}
-                  </div>
+                  <div className="text-sm font-medium text-white truncate">{r.userName}</div>
                   <div className="text-xs text-slate-500">{r.date} · {r.type}</div>
+                  {r.lastCommentBody && (
+                    <div
+                      className="flex items-center gap-1 text-xs mt-0.5 truncate"
+                      style={{ color: 'var(--text-muted)' }}
+                      title={r.commentCount > 1 ? `${r.commentCount} comments` : undefined}
+                    >
+                      <MessageCircle size={11} className="flex-shrink-0" />
+                      <span className="truncate">
+                        <span className="text-slate-400">{r.lastCommentAuthor}:</span> {r.lastCommentBody}
+                      </span>
+                      {r.commentCount > 1 && <span className="flex-shrink-0">(+{r.commentCount - 1})</span>}
+                    </div>
+                  )}
                 </div>
                 <div className="text-sm font-semibold flex-shrink-0" style={{ color: TOKENS.blue }}>
                   {r.distMi.toFixed(1)} mi
