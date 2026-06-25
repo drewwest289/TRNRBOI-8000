@@ -490,6 +490,9 @@ app.get('/api/activities', requireAuth, async (req, res) => {
     const merged = [...stravaActivities, ...localActivities]
       .sort((x, y) => (y.date || '').localeCompare(x.date || ''));
 
+    const counts = await commentCountsByRunId(merged.map(a => String(a.id)));
+    for (const a of merged) a.commentCount = counts.get(String(a.id)) ?? 0;
+
     res.json(merged);
   } catch (err) {
     console.error('[activities]', err.message);
@@ -498,6 +501,20 @@ app.get('/api/activities', requireAuth, async (req, res) => {
 });
 
 // ── Phase 11: comments on runs ────────────────────────────────────────────────
+
+// Map of run_id -> comment count, for showing an indicator on run summaries.
+async function commentCountsByRunId(runIds) {
+  const counts = new Map();
+  if (!runIds.length) return counts;
+  const { data } = await supabase
+    .from('run_comments')
+    .select('run_id')
+    .in('run_id', runIds);
+  for (const row of data ?? []) {
+    counts.set(row.run_id, (counts.get(row.run_id) ?? 0) + 1);
+  }
+  return counts;
+}
 
 app.get('/api/activities/:runId/comments', requireAuth, async (req, res) => {
   const { data, error } = await supabase
@@ -875,6 +892,9 @@ app.get('/api/team/recent-runs', requireAuth, async (req, res) => {
     const recent = [...stravaRuns, ...manualRuns]
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 30);
+
+    const counts = await commentCountsByRunId(recent.map(r => String(r.id)));
+    for (const r of recent) r.commentCount = counts.get(String(r.id)) ?? 0;
 
     res.json(recent);
   } catch (err) {

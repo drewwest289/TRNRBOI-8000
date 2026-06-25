@@ -30,6 +30,12 @@ function fetchActivities() {
     .catch(err => console.error('[useActivities] fetch failed:', err.message));
 }
 
+// Exposed so other features (e.g. comments) can refresh the shared cache
+// after a mutation that isn't itself an activity create/update/delete —
+// comment counts live on the activity objects, so posting/deleting a
+// comment needs the same refetch.
+export const refreshActivities = fetchActivities;
+
 export function useActivities() {
   const [activities, setActivities] = useState(_cache ?? []);
 

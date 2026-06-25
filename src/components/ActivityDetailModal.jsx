@@ -7,6 +7,7 @@ import {
 import { fetchStravaActivity, fetchStravaStreamsAll } from '../lib/strava';
 import { fetchComments, postComment, deleteComment } from '../lib/comments';
 import { useAuth } from '../hooks/useAuth';
+import { refreshActivities } from '../hooks/useActivities';
 import { TOKENS } from '../lib/colors';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -365,6 +366,7 @@ function CommentThread({ runId }) {
       const created = await postComment(runId, draft.trim());
       setComments(prev => [...(prev ?? []), created]);
       setDraft('');
+      refreshActivities();
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -377,6 +379,7 @@ function CommentThread({ runId }) {
     try {
       await deleteComment(id);
       setComments(prev => prev.filter(c => c.id !== id));
+      refreshActivities();
     } catch (e) {
       setErr(e.message);
     }

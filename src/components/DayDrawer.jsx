@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, MessageCircle } from 'lucide-react';
 import { X, Trash2, Pencil } from '../icons/PixelIcons';
 import ActivityDetailModal from './ActivityDetailModal';
 import {
@@ -112,11 +112,21 @@ function StatsView({ logs, onEdit, onDelete, onTypeChange, onBack }) {
               )}
               <div className="flex items-center gap-2">
                 <button
-                  className="btn-ghost text-xs"
+                  className="btn-ghost text-xs flex items-center gap-1"
                   onClick={() => setDetailRun(r)}
                   aria-label="View details"
                 >
                   Details
+                  {r.commentCount > 0 && (
+                    <span
+                      className="flex items-center gap-0.5"
+                      style={{ color: 'var(--text-muted)' }}
+                      title={`${r.commentCount} comment${r.commentCount === 1 ? '' : 's'}`}
+                    >
+                      <MessageCircle size={11} />
+                      {r.commentCount}
+                    </span>
+                  )}
                 </button>
                 {isManual && r.type !== 'Rest' && (
                   <button

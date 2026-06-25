@@ -4,6 +4,7 @@ import { RefreshCw } from '../../icons/PixelIcons';
 import { TOKENS } from '../../lib/colors';
 import ActivityDetailModal from '../ActivityDetailModal';
 import { useAuth } from '../../hooks/useAuth';
+import { MessageCircle } from 'lucide-react';
 
 function medal(rank) {
   if (rank === 1) return '🥇';
@@ -191,7 +192,18 @@ export default function TeamTab() {
                 onClick={() => setActiveRecent(r)}
               >
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-white truncate">{r.userName}</div>
+                  <div className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+                    {r.userName}
+                    {r.commentCount > 0 && (
+                      <span
+                        className="flex items-center gap-0.5 text-xs font-normal text-slate-500"
+                        title={`${r.commentCount} comment${r.commentCount === 1 ? '' : 's'}`}
+                      >
+                        <MessageCircle size={11} />
+                        {r.commentCount}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-500">{r.date} · {r.type}</div>
                 </div>
                 <div className="text-sm font-semibold flex-shrink-0" style={{ color: TOKENS.blue }}>

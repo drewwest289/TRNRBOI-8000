@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { Plus, Trash2, Trophy } from '../../icons/PixelIcons';
-import { X } from 'lucide-react';
+import { X, MessageCircle } from 'lucide-react';
 import {
   useActivities, addManualActivity, deleteManualActivity, updateManualActivity,
   setActivityOverride, TYPE_OPTIONS,
@@ -378,6 +378,16 @@ export default function HistoryTab() {
                     {r.stravaId != null && prIds.has(r.stravaId) && (
                       <span title="Current personal record">
                         <Trophy size={13} color={TOKENS.yellow} />
+                      </span>
+                    )}
+                    {r.commentCount > 0 && (
+                      <span
+                        className="flex items-center gap-0.5 text-xs"
+                        style={{ color: 'var(--text-muted)' }}
+                        title={`${r.commentCount} comment${r.commentCount === 1 ? '' : 's'}`}
+                      >
+                        <MessageCircle size={12} />
+                        {r.commentCount}
                       </span>
                     )}
                   </button>
