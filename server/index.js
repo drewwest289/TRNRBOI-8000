@@ -877,7 +877,7 @@ app.get('/api/team/recent-runs', requireAuth, async (req, res) => {
     }));
 
     const manualRuns = (manualRows ?? [])
-      .filter(o => o.date >= since30)
+      .filter(o => o.date >= since30 && o.type !== 'Rest')
       .map(o => ({
         id:       `local-${o.id}`,
         stravaId: null,
