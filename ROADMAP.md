@@ -19,3 +19,8 @@ Phase 2 — Richer Strava Data
 
 
 [x] there is no run information for Aaron Wallace, despite the fact that I belive he has connected his strava and i know he has runs. Let me know why. — Root cause: the Team leaderboard read from the old `runs` Supabase table (pre-OneTruth migration). Users who joined after the migration — Aaron included — have their data only in Strava's live API, never in `runs`. Fixed: the leaderboard endpoint now fetches Strava activities for all users server-side in parallel (last 90 days, using each user's stored token) and merges manual entries from `activity_overrides`. The old `runs` table is no longer consulted for Team stats.
+
+
+Phase 3 — Social
+
+ Comments on runs — Let teammates leave comments on each other's runs (e.g. on the History tab and/or Team view). Needs a new Supabase table for comments tied to a run, plus UI for viewing/adding/deleting comments.

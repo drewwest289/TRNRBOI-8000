@@ -415,6 +415,16 @@ app.get('/api/strava/athlete', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/strava/athlete/zones', requireAuth, async (req, res) => {
+  try {
+    const data = await stravaGet('/athlete/zones', {}, req.user.id);
+    res.json(data);
+  } catch (err) {
+    console.error('[strava]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // ── Phase 7: merged activities (Strava + thin local overrides) ───────────────
 // Single source of truth for "what runs happened" — live Strava activities,
 // classified once here, with user corrections/local-only entries overlaid from
