@@ -70,6 +70,7 @@ function StatsView({ logs, onEdit, onDelete, onTypeChange, onBack }) {
       {detailRun && (
         <ActivityDetailModal
           activity={{
+            id:       detailRun.id,
             name:     detailRun.notes || `${detailRun.type} run`,
             date:     detailRun.date,
             distMi:   detailRun.distMi,

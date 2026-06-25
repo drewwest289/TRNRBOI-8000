@@ -141,6 +141,7 @@ export default function HistoryTab() {
       {activeRun && (
         <ActivityDetailModal
           activity={{
+            id:       activeRun.id,
             name:     activeRun.notes?.match(/^(.+?)\n/)?.[1] || `${activeRun.type} · ${activeRun.date}`,
             date:     activeRun.date,
             distMi:   activeRun.distMi,

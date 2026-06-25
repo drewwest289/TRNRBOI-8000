@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
 import { RefreshCw } from '../../icons/PixelIcons';
 import { TOKENS } from '../../lib/colors';
+import ActivityDetailModal from '../ActivityDetailModal';
+import { useAuth } from '../../hooks/useAuth';
 
 function medal(rank) {
   if (rank === 1) return '🥇';
@@ -51,10 +53,15 @@ function initials(name) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function TeamTab() {
+  const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState(null);
   const [loading,     setLoading]     = useState(true);
   const [err,         setErr]         = useState(null);
   const [activeKey,   setActiveKey]   = useState('weeklyMiles');
+
+  const [recentRuns,    setRecentRuns]    = useState(null);
+  const [recentErr,     setRecentErr]     = useState(null);
+  const [activeRecent,  setActiveRecent]  = useState(null);
 
   async function load() {
     setLoading(true);
@@ -69,7 +76,17 @@ export default function TeamTab() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  async function loadRecent() {
+    setRecentErr(null);
+    try {
+      const data = await apiFetch('/api/team/recent-runs');
+      setRecentRuns(data);
+    } catch (e) {
+      setRecentErr(e.message);
+    }
+  }
+
+  useEffect(() => { load(); loadRecent(); }, []);
 
   const metric = METRICS.find(m => m.key === activeKey);
 
@@ -151,6 +168,56 @@ export default function TeamTab() {
           </div>
         )}
       </div>
+
+      <div className="card mt-4">
+        <div className="section-label mb-3">Recent team runs</div>
+
+        {recentErr && <p className="text-xs text-red-400 py-2">{recentErr}</p>}
+
+        {recentRuns === null && !recentErr && (
+          <div className="text-center py-4 text-slate-500 text-sm">Loading…</div>
+        )}
+
+        {recentRuns?.length === 0 && (
+          <div className="text-center py-4 text-slate-500 text-sm">No recent runs</div>
+        )}
+
+        {recentRuns?.length > 0 && (
+          <div className="space-y-2">
+            {recentRuns.map(r => (
+              <button
+                key={r.id}
+                className="w-full flex items-center justify-between gap-3 bg-slate-800 rounded-xl px-4 py-2.5 text-left hover:bg-slate-700/60 transition-colors"
+                onClick={() => setActiveRecent(r)}
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-white truncate">{r.userName}</div>
+                  <div className="text-xs text-slate-500">{r.date} · {r.type}</div>
+                </div>
+                <div className="text-sm font-semibold flex-shrink-0" style={{ color: TOKENS.blue }}>
+                  {r.distMi.toFixed(1)} mi
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {activeRecent && (
+        <ActivityDetailModal
+          activity={{
+            id:       activeRecent.id,
+            name:     `${activeRecent.userName} · ${activeRecent.type}`,
+            date:     activeRecent.date,
+            distMi:   activeRecent.distMi,
+            durMin:   activeRecent.durMin,
+            // Strava detail/streams are fetched with the viewer's own token, which
+            // can't read another athlete's activity — only request them for your own runs.
+            stravaId: activeRecent.userId === user?.id ? activeRecent.stravaId : null,
+          }}
+          onClose={() => setActiveRecent(null)}
+        />
+      )}
     </div>
   );
 }

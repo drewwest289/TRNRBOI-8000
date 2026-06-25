@@ -5,6 +5,8 @@ import {
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import { fetchStravaActivity, fetchStravaStreamsAll } from '../lib/strava';
+import { fetchComments, postComment, deleteComment } from '../lib/comments';
+import { useAuth } from '../hooks/useAuth';
 import { TOKENS } from '../lib/colors';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -334,6 +336,110 @@ function SegmentEfforts({ efforts }) {
   );
 }
 
+// ── Comments ──────────────────────────────────────────────────────────────────
+
+function timeAgo(iso) {
+  const diffMin = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (diffMin < 1)    return 'just now';
+  if (diffMin < 60)   return `${diffMin}m ago`;
+  if (diffMin < 1440) return `${Math.round(diffMin / 60)}h ago`;
+  return `${Math.round(diffMin / 1440)}d ago`;
+}
+
+function CommentThread({ runId }) {
+  const { user } = useAuth();
+  const [comments, setComments] = useState(null);
+  const [draft,    setDraft]    = useState('');
+  const [posting,  setPosting]  = useState(false);
+  const [err,      setErr]      = useState(null);
+
+  useEffect(() => {
+    fetchComments(runId).then(setComments).catch(e => setErr(e.message));
+  }, [runId]);
+
+  async function handlePost() {
+    if (!draft.trim()) return;
+    setPosting(true);
+    setErr(null);
+    try {
+      const created = await postComment(runId, draft.trim());
+      setComments(prev => [...(prev ?? []), created]);
+      setDraft('');
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Delete this comment?')) return;
+    try {
+      await deleteComment(id);
+      setComments(prev => prev.filter(c => c.id !== id));
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
+
+  return (
+    <section>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+        Comments
+      </p>
+
+      {comments === null && !err && (
+        <p className="text-xs text-slate-500 py-1">Loading comments…</p>
+      )}
+
+      {comments?.length === 0 && (
+        <p className="text-xs text-slate-500 py-1">No comments yet.</p>
+      )}
+
+      {comments?.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {comments.map(c => (
+            <div key={c.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(30,41,59,0.5)' }}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-white">{c.authorName}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-xs text-slate-500">{timeAgo(c.createdAt)}</span>
+                  {(c.authorId === user?.id || user?.isAdmin) && (
+                    <button
+                      className="text-slate-500 hover:text-red-400 transition-colors text-xs"
+                      onClick={() => handleDelete(c.id)}
+                      aria-label="Delete comment"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">{c.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {err && <p className="text-xs text-red-400 py-1">{err}</p>}
+
+      <div className="flex gap-2">
+        <input
+          className="field flex-1 text-xs"
+          placeholder="Add a comment…"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handlePost(); }}
+          disabled={posting}
+        />
+        <button className="btn text-xs py-1.5 px-3" onClick={handlePost} disabled={posting || !draft.trim()}>
+          Post
+        </button>
+      </div>
+    </section>
+  );
+}
+
 // ── Cache ─────────────────────────────────────────────────────────────────────
 
 const detailCache  = new Map(); // stravaId → activity detail
@@ -439,6 +545,8 @@ export default function ActivityDetailModal({ activity, onClose }) {
               )}
             </>
           )}
+
+          {activity.id != null && <CommentThread runId={activity.id} />}
         </div>
       </div>
     </div>

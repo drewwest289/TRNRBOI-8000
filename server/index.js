@@ -497,6 +497,51 @@ app.get('/api/activities', requireAuth, async (req, res) => {
   }
 });
 
+// ── Phase 11: comments on runs ────────────────────────────────────────────────
+
+app.get('/api/activities/:runId/comments', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('run_comments')
+    .select('id, body, created_at, author_id, users(name)')
+    .eq('run_id', req.params.runId)
+    .order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json((data || []).map(c => ({
+    id:        c.id,
+    body:      c.body,
+    createdAt: c.created_at,
+    authorId:  c.author_id,
+    authorName: c.users?.name ?? 'Unknown',
+  })));
+});
+
+app.post('/api/activities/:runId/comments', requireAuth, async (req, res) => {
+  const { body } = req.body;
+  if (!body || !body.trim()) return res.status(400).json({ error: 'body is required' });
+  const { data, error } = await supabase
+    .from('run_comments')
+    .insert({ run_id: req.params.runId, author_id: req.user.id, body: body.trim() })
+    .select('id, body, created_at, author_id')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({
+    id:         data.id,
+    body:       data.body,
+    createdAt:  data.created_at,
+    authorId:   data.author_id,
+    authorName: req.user.name,
+  });
+});
+
+app.delete('/api/comments/:commentId', requireAuth, async (req, res) => {
+  let query = supabase.from('run_comments').delete().eq('id', req.params.commentId);
+  if (!req.user.isAdmin) query = query.eq('author_id', req.user.id);
+  const { data, error } = await query.select('id');
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data?.length) return res.status(404).json({ error: 'comment not found' });
+  res.json({ ok: true });
+});
+
 // Upsert a type/notes correction for a Strava-linked activity.
 app.put('/api/activities/:strava_id/override', requireAuth, async (req, res) => {
   const stravaId = parseInt(req.params.strava_id, 10);
@@ -565,6 +610,7 @@ app.delete('/api/activities/manual/:id', requireAuth, async (req, res) => {
     .eq('user_id', req.user.id)
     .is('strava_id', null);
   if (error) return res.status(500).json({ error: error.message });
+  await supabase.from('run_comments').delete().eq('run_id', `local-${req.params.id}`);
   res.json({ ok: true });
 });
 
@@ -768,6 +814,69 @@ app.get('/api/team/leaderboard', requireAuth, async (req, res) => {
     }));
 
     res.json(leaderboard);
+  } catch (err) {
+    console.error('[team]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Plain recent-activity list across the whole team — the minimum needed for
+// comments to attach to a teammate's run, without building a full feed.
+app.get('/api/team/recent-runs', requireAuth, async (req, res) => {
+  try {
+    const [{ data: users, error: userErr }, { data: manualRows, error: manualErr }] = await Promise.all([
+      supabase.from('users').select('id, name'),
+      supabase.from('activity_overrides')
+        .select('id, user_id, date, dist, dur, type')
+        .is('strava_id', null),
+    ]);
+    if (userErr)  return res.status(500).json({ error: userErr.message });
+    if (manualErr) return res.status(500).json({ error: manualErr.message });
+
+    const userName = new Map((users ?? []).map(u => [u.id, u.name]));
+
+    const today   = isoDate(new Date());
+    const since30 = addDays(today, -30);
+    const after30 = Math.floor(new Date(since30 + 'T00:00:00Z').getTime() / 1000);
+
+    const stravaRuns = [];
+    await Promise.all((users ?? []).map(async u => {
+      try {
+        const batch = await stravaGet('/athlete/activities', { per_page: 200, after: after30 }, u.id);
+        for (const a of batch) {
+          if ((a.sport_type || a.type || '').toLowerCase() !== 'run') continue;
+          stravaRuns.push({
+            id:       String(a.id),
+            stravaId: a.id,
+            userId:   u.id,
+            userName: userName.get(u.id) ?? 'Unknown',
+            date:     a.start_date_local?.substring(0, 10) ?? '',
+            distMi:   parseFloat((a.distance / 1609.34).toFixed(2)),
+            durMin:   Math.round(a.moving_time / 60),
+            type:     activityClassifier(a),
+          });
+        }
+      } catch { /* user's token unavailable — skip */ }
+    }));
+
+    const manualRuns = (manualRows ?? [])
+      .filter(o => o.date >= since30)
+      .map(o => ({
+        id:       `local-${o.id}`,
+        stravaId: null,
+        userId:   o.user_id,
+        userName: userName.get(o.user_id) ?? 'Unknown',
+        date:     o.date,
+        distMi:   parseFloat(o.dist),
+        durMin:   o.dur,
+        type:     o.type ?? 'Easy',
+      }));
+
+    const recent = [...stravaRuns, ...manualRuns]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 30);
+
+    res.json(recent);
   } catch (err) {
     console.error('[team]', err.message);
     res.status(500).json({ error: err.message });
