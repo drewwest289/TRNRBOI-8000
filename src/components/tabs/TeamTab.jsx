@@ -135,7 +135,12 @@ export default function TeamTab() {
             {sorted.map(({ id, name, metrics }, i) => {
               const val   = metrics[activeKey];
               const pct   = maxVal > 0 ? Math.max(0, (Math.abs(val) / maxVal) * 100) : 0;
-              const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+              // paceImprovement is the only metric that can go negative — a long bar should
+              // never read as "good" when it's actually a regression, so flag it red instead
+              // of the usual rotating avatar color.
+              const color = activeKey === 'paceImprovement' && val < 0
+                ? TOKENS.red
+                : AVATAR_COLORS[i % AVATAR_COLORS.length];
               return (
                 <div
                   key={id}
