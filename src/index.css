@@ -134,7 +134,7 @@
     display: block;
     font-family: 'Press Start 2P', monospace;
     font-size: 14px;
-    color: var(--green);
+    color: var(--text-primary);
     text-transform: uppercase;
     letter-spacing: 0.15em;
     margin-bottom: 0.75rem;
@@ -297,7 +297,7 @@ div.rounded-lg {
 .text-2xl.text-white,
 .text-3xl.text-white {
   font-family: 'Press Start 2P', monospace !important;
-  color: var(--green) !important;
+  color: var(--text-primary) !important;
 }
 
 /* ── Run type legend dots → use token colors ──────────────────────────────── */
